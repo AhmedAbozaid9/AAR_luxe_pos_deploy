@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
+import { AddCustomerDialog } from "./AddCustomerDialog";
 
 const Sidebar = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -58,7 +59,6 @@ const Sidebar = () => {
       setSelectedCustomer(customer);
     }
   };
-
   const handleCarChange = (carId: string) => {
     if (carId === "" || !selectedCustomer) {
       setSelectedCar(null);
@@ -68,6 +68,15 @@ const Sidebar = () => {
     const car = selectedCustomer.cars.find((c) => c.id === parseInt(carId));
     if (car) {
       setSelectedCar(car);
+    }
+  };
+  const handleCustomerAdded = (newCustomer: Customer) => {
+    console.log("Adding new customer:", newCustomer);
+    if (newCustomer?.id) {
+      setCustomers((prev) => [...prev, newCustomer]);
+      setSelectedCustomer(newCustomer);
+    } else {
+      console.error("Invalid customer data:", newCustomer);
     }
   };
 
@@ -88,7 +97,6 @@ const Sidebar = () => {
             Choose a customer and their vehicle
           </p>
         </div>
-
         {/* Error message */}
         {error && (
           <motion.div
@@ -98,37 +106,44 @@ const Sidebar = () => {
           >
             {error}
           </motion.div>
-        )}        {/* Customer Select */}
+        )}{" "}
+        {/* Customer Select */}
         <div className="space-y-2">
           <div className="text-sm font-medium text-green-300">Customer</div>
-          <Select
-            value={selectedCustomer?.id.toString() ?? ""}
-            onValueChange={handleCustomerChange}
-            disabled={isLoadingCustomers}
-          >
-            <motion.div
-              whileFocus={{ scale: 1.02 }}
-              transition={{ duration: 0.2 }}
+          <div className="flex items-center space-x-2">
+            <Select
+              value={selectedCustomer?.id.toString() ?? ""}
+              onValueChange={handleCustomerChange}
+              disabled={isLoadingCustomers}
             >
-              <SelectTrigger className="w-full">
-                <SelectValue
-                  placeholder={
-                    isLoadingCustomers
-                      ? "Loading customers..."
-                      : "Select a customer"
-                  }
-                />
-              </SelectTrigger>
-            </motion.div>
-            <SelectContent>
-              {customers.map((customer) => (
-                <SelectItem key={customer.id} value={customer.id.toString()}>
-                  {customer.name} ({customer.email})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>        {/* Car Select */}
+              <motion.div
+                whileFocus={{ scale: 1.02 }}
+                transition={{ duration: 0.2 }}
+                className="flex-1"
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue
+                    placeholder={
+                      isLoadingCustomers
+                        ? "Loading customers..."
+                        : "Select a customer"
+                    }
+                  />
+                </SelectTrigger>
+              </motion.div>{" "}
+              <SelectContent>
+                {customers.map((customer) => (
+                  <SelectItem key={customer.id} value={customer.id.toString()}>
+                    {customer.name}{" "}
+                    {customer.email ? `(${customer.email})` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <AddCustomerDialog onCustomerAdded={handleCustomerAdded} />
+          </div>
+        </div>{" "}
+        {/* Car Select */}
         <div className="space-y-2">
           <div className="text-sm font-medium text-green-300">Vehicle</div>
           <Select
@@ -154,7 +169,6 @@ const Sidebar = () => {
             </SelectContent>
           </Select>
         </div>
-
         {/* Selected Info Display */}
         {selectedCustomer && (
           <motion.div
@@ -222,7 +236,6 @@ const Sidebar = () => {
             )}
           </motion.div>
         )}
-
         {/* Clear Selection Button */}
         {(selectedCustomer || selectedCar) && (
           <motion.button
