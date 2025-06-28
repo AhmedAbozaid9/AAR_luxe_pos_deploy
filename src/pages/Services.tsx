@@ -1,29 +1,48 @@
 import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
+import { getServices, type Service } from "../api/getServices";
 import { useCustomerStore } from "../stores/customerStore";
 
 const Services = () => {
   const { selectedCustomer, selectedCar } = useCustomerStore();
+  const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const services = [
-    {
-      title: "Hair Styling",
-      description: "Professional hair cutting and styling services",
-      price: "$45",
-      icon: "✂️",
-    },
-    {
-      title: "Manicure",
-      description: "Complete nail care and design services",
-      price: "$25",
-      icon: "💅",
-    },
-    {
-      title: "Facial Treatment",
-      description: "Rejuvenating facial treatments for all skin types",
-      price: "$65",
-      icon: "🧴",
-    },
-  ];
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        setLoading(true);
+        const response = await getServices();
+        setServices(response.data);
+      } catch (err) {
+        setError("Failed to load services");
+        console.error("Error fetching services:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchServices();
+  }, []); // Function to get the minimum price for a service
+  const getMinPrice = (service: Service) => {
+    if (service.prices_min_price) {
+      return `AED ${service.prices_min_price.toLocaleString()}`;
+    }
+
+    // Fallback: check service options for minimum price
+    if (service.options && service.options.length > 0) {
+      const allPrices = service.options.flatMap(
+        (option) => option.prices?.map((price) => price.price) || []
+      );
+      if (allPrices.length > 0) {
+        const minPrice = Math.min(...allPrices);
+        return `From AED ${minPrice.toLocaleString()}`;
+      }
+    }
+
+    return "Contact for pricing";
+  };
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -44,6 +63,41 @@ const Services = () => {
       scale: 1,
     },
   };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-red-600 text-lg">{error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+        >
+          Try Again
+        </button>
+      </div>
+    );
+  }
+
+  if (!loading && services.length === 0) {
+    return (
+      <div className="text-center py-16">
+        <div className="text-6xl mb-4">🔧</div>
+        <h2 className="text-2xl font-bold text-gray-700 mb-2">
+          No Services Available
+        </h2>
+        <p className="text-gray-500">
+          We're currently updating our services. Please check back later.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <motion.div
@@ -94,7 +148,7 @@ const Services = () => {
       >
         {services.map((service, index) => (
           <motion.div
-            key={service.title}
+            key={service.id}
             variants={cardVariants}
             whileHover={{
               y: -8,
@@ -102,36 +156,108 @@ const Services = () => {
               transition: { duration: 0.3 },
             }}
             whileTap={{ scale: 0.98 }}
-            className="group bg-white p-8 rounded-2xl shadow-lg border border-gray-100 hover:shadow-2xl hover:border-green-200 transition-all duration-300 cursor-pointer"
+            className="group bg-white p-8 rounded-2xl shadow-lg border border-gray-100 hover:shadow-2xl hover:border-green-200 transition-all duration-300 cursor-pointer flex flex-col h-full"
           >
+            {/* Header with icon and price */}
             <div className="flex items-center justify-between mb-6">
               <motion.div
-                className="text-4xl"
+                className="flex items-center justify-center w-12 h-12"
                 whileHover={{ scale: 1.2, rotate: 10 }}
                 transition={{ duration: 0.3 }}
               >
-                {service.icon}
+                {service.icon?.url ? (
+                  <img
+                    src={service.icon.url}
+                    alt={service.name.en}
+                    className="w-10 h-10 object-contain"
+                  />
+                ) : (
+                  <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-green-600 rounded-xl flex items-center justify-center text-white text-lg font-bold">
+                    {service.name.en.charAt(0)}
+                  </div>
+                )}
               </motion.div>
               <motion.div
-                className="text-3xl font-bold bg-gradient-to-r from-green-600 to-green-700 bg-clip-text text-transparent"
+                className="text-right"
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ duration: 0.5, delay: index * 0.1 + 0.3 }}
               >
-                {service.price}
+                <div className="text-2xl font-bold bg-gradient-to-r from-green-600 to-green-700 bg-clip-text text-transparent">
+                  {getMinPrice(service)}
+                </div>
+                {service.orders_count > 0 && (
+                  <div className="text-xs text-gray-500">
+                    {service.orders_count} orders
+                  </div>
+                )}
               </motion.div>
             </div>
 
-            <h3 className="text-xl font-bold mb-3 text-gray-800 group-hover:text-green-600 transition-colors duration-300">
-              {service.title}
+            {/* Service title */}
+            <h3 className="text-xl font-bold mb-4 text-gray-800 group-hover:text-green-600 transition-colors duration-300">
+              {service.name.en}
             </h3>
 
-            <p className="text-gray-600 leading-relaxed mb-6">
-              {service.description}
-            </p>
+            {/* Content area - will grow to fill space */}
+            <div className="flex-grow mb-6">
+              {/* What's included section - fixed height area */}
+              <div className="min-h-[120px]">
+                {service.included && service.included.length > 0 ? (
+                  <div className="space-y-2">
+                    <p className="font-semibold text-gray-700 text-sm">
+                      What's included:
+                    </p>
+                    <ul className="space-y-1">
+                      {service.included.slice(0, 3).map((item, idx) => (
+                        <li
+                          key={idx}
+                          className="text-sm text-gray-600 flex items-start"
+                        >
+                          <span className="text-green-600 mr-2 flex-shrink-0">
+                            ✓
+                          </span>
+                          <span>{item.en}</span>
+                        </li>
+                      ))}
+                      {service.included.length > 3 && (
+                        <li className="text-sm text-gray-500 italic ml-4">
+                          +{service.included.length - 3} more services...
+                        </li>
+                      )}
+                    </ul>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center h-full">
+                    <p className="text-gray-400 text-sm italic">
+                      Contact us for service details
+                    </p>
+                  </div>
+                )}
+              </div>
 
+              {/* Service metadata */}
+              <div className="flex items-center justify-between mt-4 text-sm text-gray-500 border-t pt-4">
+                <div className="flex items-center space-x-4">
+                  {service.duration && (
+                    <span className="flex items-center">
+                      <span className="mr-1">⏱️</span>
+                      {service.duration} day{service.duration > 1 ? "s" : ""}
+                    </span>
+                  )}
+                  {service.reviews_avg_rating && (
+                    <span className="flex items-center">
+                      <span className="mr-1">⭐</span>
+                      {service.reviews_avg_rating.toFixed(1)}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Button - always at bottom */}
             <motion.button
-              className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-3 px-6 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:from-green-700 hover:to-green-800"
+              className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-3 px-6 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:from-green-700 hover:to-green-800 mt-auto"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
