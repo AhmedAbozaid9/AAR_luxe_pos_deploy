@@ -106,12 +106,8 @@ const Sidebar = () => {
           >
             {error}
           </motion.div>
-<<<<<<< HEAD
-        )}{" "}
+        )}
         {/* Customer Select */}
-=======
-        )}{" "}        {/* Customer Select */}
->>>>>>> b7e6b9de065cec5c34fed6bf2b1a8d0823e4f461
         <div className="space-y-2">
           <div className="text-sm font-medium text-green-300">Customer</div>
           <div className="flex items-center space-x-2">
@@ -132,21 +128,14 @@ const Sidebar = () => {
                         ? "Loading customers..."
                         : "Select a customer"
                     }
-                  />
+                  />{" "}
                 </SelectTrigger>
-<<<<<<< HEAD
-              </motion.div>{" "}
+              </motion.div>
               <SelectContent>
                 {customers.map((customer) => (
                   <SelectItem key={customer.id} value={customer.id.toString()}>
                     {customer.name}{" "}
                     {customer.email ? `(${customer.email})` : ""}
-=======
-              </motion.div>              <SelectContent>
-                {customers.map((customer) => (
-                  <SelectItem key={customer.id} value={customer.id.toString()}>
-                    {customer.name} {customer.email ? `(${customer.email})` : ''}
->>>>>>> b7e6b9de065cec5c34fed6bf2b1a8d0823e4f461
                   </SelectItem>
                 ))}
               </SelectContent>
