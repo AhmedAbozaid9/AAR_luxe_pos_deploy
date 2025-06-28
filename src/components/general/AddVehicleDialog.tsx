@@ -2,7 +2,15 @@ import { Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createCar } from "../../api/createCar";
 import type { Car } from "../../api/getCustomers";
-import { getMetaData, type MetaDataResponse } from "../../api/getMetaData";
+import {
+  getCarModels,
+  getCityPlateLetters,
+  getMetaData,
+  getPlateTypesForCity,
+  type CarModel,
+  type MetaDataResponse,
+  type PlateTypeForCity,
+} from "../../api/getMetaData";
 import { Button } from "../ui/button";
 import {
   Dialog,
@@ -35,8 +43,15 @@ export const AddVehicleDialog = ({
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMeta, setIsLoadingMeta] = useState(false);
+  const [isLoadingPlateTypes, setIsLoadingPlateTypes] = useState(false);
+  const [isLoadingCarModels, setIsLoadingCarModels] = useState(false);
   const [error, setError] = useState("");
   const [metaData, setMetaData] = useState<MetaDataResponse | null>(null);
+  const [carModels, setCarModels] = useState<CarModel[]>([]);
+  const [plateTypesForCity, setPlateTypesForCity] = useState<
+    PlateTypeForCity[]
+  >([]);
+  const [plateLetters, setPlateLetters] = useState<string[]>([]);
 
   const [formData, setFormData] = useState({
     city_id: "",
@@ -50,9 +65,7 @@ export const AddVehicleDialog = ({
     year: "",
     code: "",
     numbers: "",
-  });
-
-  // Load metadata when dialog opens
+  }); // Load metadata when dialog opens
   useEffect(() => {
     if (open && !metaData) {
       const loadMetaData = async () => {
@@ -71,6 +84,72 @@ export const AddVehicleDialog = ({
       loadMetaData();
     }
   }, [open, metaData]);
+
+  // Load car models when brand changes
+  useEffect(() => {
+    if (formData.car_brand_id) {
+      const loadCarModels = async () => {
+        setIsLoadingCarModels(true);
+        try {
+          const models = await getCarModels(formData.car_brand_id);
+          setCarModels(models);
+        } catch (err) {
+          console.error("Error loading car models:", err);
+          setCarModels([]);
+        } finally {
+          setIsLoadingCarModels(false);
+        }
+      };
+      loadCarModels();
+    } else {
+      setCarModels([]);
+    }
+  }, [formData.car_brand_id]);
+
+  // Load plate types when city changes
+  useEffect(() => {
+    if (formData.city_id) {
+      const loadPlateTypes = async () => {
+        setIsLoadingPlateTypes(true);
+        try {
+          const plateTypes = await getPlateTypesForCity(formData.city_id);
+          setPlateTypesForCity(plateTypes);
+          // Clear plate type selection when city changes
+          setFormData((prev) => ({ ...prev, plate_type_id: "" }));
+        } catch (err) {
+          console.error("Error loading plate types:", err);
+          setPlateTypesForCity([]);
+        } finally {
+          setIsLoadingPlateTypes(false);
+        }
+      };
+      loadPlateTypes();
+    } else {
+      setPlateTypesForCity([]);
+    }
+  }, [formData.city_id]);
+
+  // Load plate letters when city and plate type change
+  useEffect(() => {
+    if (formData.city_id && formData.plate_type_id) {
+      const loadPlateLetters = async () => {
+        try {
+          const letters = await getCityPlateLetters(
+            formData.city_id,
+            formData.plate_type_id
+          );
+          setPlateLetters(letters);
+          console.log("Plate letters received:", letters);
+        } catch (err) {
+          console.error("Error loading plate letters:", err);
+          setPlateLetters([]);
+        }
+      };
+      loadPlateLetters();
+    } else {
+      setPlateLetters([]);
+    }
+  }, [formData.city_id, formData.plate_type_id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -165,10 +244,21 @@ export const AddVehicleDialog = ({
       setIsLoading(false);
     }
   };
-
   const handleInputChange =
     (field: keyof typeof formData) => (value: string) => {
-      setFormData((prev) => ({ ...prev, [field]: value }));
+      setFormData((prev) => {
+        const newData = { ...prev, [field]: value };
+        // Clear car model when brand changes
+        if (field === "car_brand_id") {
+          newData.car_model_id = "";
+        }
+        // Clear plate type when city changes (handled in useEffect)
+        // Clear plate code when plate type changes
+        if (field === "plate_type_id") {
+          newData.code = "";
+        }
+        return newData;
+      });
     };
 
   const resetForm = () => {
@@ -278,6 +368,41 @@ export const AddVehicleDialog = ({
                       </SelectItem>
                     ))}
                   </SelectContent>
+                </Select>{" "}
+              </div>{" "}
+              {/* Car Model */}
+              <div className="space-y-2">
+                <label
+                  htmlFor="car-model"
+                  className="text-sm font-medium text-green-300"
+                >
+                  Car Model
+                </label>{" "}
+                <Select
+                  value={formData.car_model_id}
+                  onValueChange={handleInputChange("car_model_id")}
+                  disabled={
+                    !formData.car_brand_id || isLoadingCarModels || isLoading
+                  }
+                >
+                  <SelectTrigger>
+                    {" "}
+                    <SelectValue
+                      placeholder={(() => {
+                        if (!formData.car_brand_id)
+                          return "Select a brand first";
+                        if (isLoadingCarModels) return "Loading models...";
+                        return "Select a model";
+                      })()}
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {carModels?.map((model) => (
+                      <SelectItem key={model.id} value={model.id.toString()}>
+                        {model.name.en} ({model.name.ar})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
               </div>
               {/* Car Group */}
@@ -342,12 +467,23 @@ export const AddVehicleDialog = ({
                   value={formData.plate_type_id}
                   onValueChange={handleInputChange("plate_type_id")}
                   required
+                  disabled={
+                    !formData.city_id || isLoadingPlateTypes || isLoading
+                  }
                 >
+                  {" "}
                   <SelectTrigger>
-                    <SelectValue placeholder="Select plate type" />
-                  </SelectTrigger>{" "}
+                    <SelectValue
+                      placeholder={(() => {
+                        if (!formData.city_id) return "Select a city first";
+                        if (isLoadingPlateTypes)
+                          return "Loading plate types...";
+                        return "Select plate type";
+                      })()}
+                    />
+                  </SelectTrigger>
                   <SelectContent>
-                    {metaData?.car_types?.map((type) => (
+                    {plateTypesForCity?.map((type) => (
                       <SelectItem key={type.id} value={type.id}>
                         {type.name.en} ({type.name.ar})
                       </SelectItem>
@@ -412,7 +548,7 @@ export const AddVehicleDialog = ({
                   required
                   disabled={isLoading}
                 />
-              </div>
+              </div>{" "}
               {/* Plate Code */}
               <div className="space-y-2">
                 <label
@@ -421,15 +557,41 @@ export const AddVehicleDialog = ({
                 >
                   Plate Code *
                 </label>
-                <Input
-                  id="code"
-                  type="text"
-                  placeholder="A"
-                  value={formData.code}
-                  onChange={(e) => handleInputChange("code")(e.target.value)}
-                  required
-                  disabled={isLoading}
-                />
+                {plateLetters.length > 0 ? (
+                  <Select
+                    value={formData.code}
+                    onValueChange={handleInputChange("code")}
+                    required
+                    disabled={!formData.plate_type_id || isLoading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue
+                        placeholder={
+                          !formData.plate_type_id
+                            ? "Select plate type first"
+                            : "Select plate code"
+                        }
+                      />
+                    </SelectTrigger>{" "}
+                    <SelectContent>
+                      {plateLetters.map((letter) => (
+                        <SelectItem key={letter} value={letter}>
+                          {letter}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    id="code"
+                    type="text"
+                    placeholder="A"
+                    value={formData.code}
+                    onChange={(e) => handleInputChange("code")(e.target.value)}
+                    required
+                    disabled={isLoading}
+                  />
+                )}
               </div>
               {/* Plate Numbers */}
               <div className="space-y-2">
