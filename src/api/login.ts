@@ -14,6 +14,6 @@ export interface LoginResponse {
 export const loginUser = async (
   credentials: LoginCredentials
 ): Promise<LoginResponse> => {
-  const response = await axios.post("/employee/auth/login", credentials);
+  const response = await axios.post("/pos/login", credentials);
   return response.data;
 };
