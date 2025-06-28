@@ -38,6 +38,7 @@ const LoginForm = () => {
 
     try {
       const response = await loginUser(credentials);
+      console.log(response.token);
       login(response.user, response.token);
     } catch (err: unknown) {
       const apiError = err as ApiError;

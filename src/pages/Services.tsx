@@ -1,6 +1,9 @@
 import { motion } from "framer-motion";
+import { useCustomerStore } from "../stores/customerStore";
 
 const Services = () => {
+  const { selectedCustomer, selectedCar } = useCustomerStore();
+
   const services = [
     {
       title: "Hair Styling",
@@ -56,6 +59,32 @@ const Services = () => {
       >
         Services
       </motion.h1>
+
+      {/* Customer Information */}
+      {selectedCustomer && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="mb-8 p-6 bg-gradient-to-r from-green-50 to-green-100 rounded-2xl border border-green-200"
+        >
+          <h2 className="text-lg font-semibold text-green-800 mb-3">
+            Service for: {selectedCustomer.name}
+          </h2>
+          <div className="flex flex-wrap gap-4 text-sm">
+            <span className="text-green-700">📧 {selectedCustomer.email}</span>
+            <span className="text-green-700">
+              📱 {selectedCustomer.phone_national}
+            </span>
+            {selectedCar && (
+              <span className="text-green-700">
+                🚗 {selectedCar.year} {selectedCar.color_name} -{" "}
+                {selectedCar.code} {selectedCar.numbers}
+              </span>
+            )}
+          </div>
+        </motion.div>
+      )}
 
       <motion.div
         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"

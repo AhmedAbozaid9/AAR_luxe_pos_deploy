@@ -7,10 +7,9 @@ const Layout = () => {
   const location = useLocation();
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-gray-100 to-gray-200">
-      {/* Sidebar */}
+    <div className="flex h-screen bg-gradient-to-br from-gray-100 to-gray-200">      {/* Sidebar */}
       <motion.div
-        className="w-64 bg-gradient-to-b from-slate-900 via-gray-900 to-black text-white shadow-2xl border-r border-green-500/20"
+        className="w-80 bg-gradient-to-b from-slate-900 via-gray-900 to-black text-white shadow-2xl border-r border-green-500/20"
         initial={{ x: -100, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
