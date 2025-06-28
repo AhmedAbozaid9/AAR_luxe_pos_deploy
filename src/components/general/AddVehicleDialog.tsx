@@ -1,0 +1,472 @@
+import { Plus } from "lucide-react";
+import { useEffect, useState } from "react";
+import { createCar } from "../../api/createCar";
+import type { Car } from "../../api/getCustomers";
+import { getMetaData, type MetaDataResponse } from "../../api/getMetaData";
+import { Button } from "../ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "../ui/dialog";
+import { Input } from "../ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
+
+interface AddVehicleDialogProps {
+  customerId: number;
+  onVehicleAdded: (vehicle: Car) => void;
+  disabled?: boolean;
+}
+
+export const AddVehicleDialog = ({
+  customerId,
+  onVehicleAdded,
+  disabled,
+}: AddVehicleDialogProps) => {
+  const [open, setOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMeta, setIsLoadingMeta] = useState(false);
+  const [error, setError] = useState("");
+  const [metaData, setMetaData] = useState<MetaDataResponse | null>(null);
+
+  const [formData, setFormData] = useState({
+    city_id: "",
+    car_brand_id: "",
+    car_model_id: "",
+    plate_type_id: "",
+    car_type_id: "",
+    car_group_id: "",
+    color: "",
+    color_name: "",
+    year: "",
+    code: "",
+    numbers: "",
+  });
+
+  // Load metadata when dialog opens
+  useEffect(() => {
+    if (open && !metaData) {
+      const loadMetaData = async () => {
+        setIsLoadingMeta(true);
+        try {
+          const data = await getMetaData();
+          console.log("Meta data received:", data);
+          setMetaData(data);
+        } catch (err) {
+          setError("Failed to load form data. Please try again.");
+          console.error("Error loading meta data:", err);
+        } finally {
+          setIsLoadingMeta(false);
+        }
+      };
+      loadMetaData();
+    }
+  }, [open, metaData]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const carData = {
+        city_id: parseInt(formData.city_id),
+        car_brand_id: parseInt(formData.car_brand_id),
+        car_model_id: formData.car_model_id
+          ? parseInt(formData.car_model_id)
+          : undefined,
+        plate_type_id: formData.plate_type_id,
+        car_type_id: formData.car_type_id,
+        car_group_id: parseInt(formData.car_group_id),
+        color: formData.color,
+        color_name: formData.color_name,
+        year: formData.year,
+        code: formData.code,
+        numbers: formData.numbers,
+        user_id: customerId,
+      };
+
+      const response = await createCar(carData);
+      // Handle different response structures
+      const newCar =
+        response.data ??
+        ({
+          id: response.id ?? Date.now(),
+          business_id: response.business_id ?? 1,
+          user_id: response.user_id ?? customerId,
+          city_id: response.city_id ?? carData.city_id,
+          car_brand_id: response.car_brand_id ?? carData.car_brand_id,
+          car_model_id: response.car_model_id ?? carData.car_model_id,
+          car_type_id: response.car_type_id ?? null,
+          plate_type_id: response.plate_type_id ?? carData.plate_type_id,
+          color: response.color ?? carData.color,
+          color_name: response.color_name ?? carData.color_name,
+          year: response.year ?? carData.year,
+          code: response.code ?? carData.code,
+          numbers: response.numbers ?? carData.numbers,
+          created_at: response.created_at ?? new Date().toISOString(),
+          updated_at: response.updated_at ?? new Date().toISOString(),
+          car_group_id: response.car_group_id ?? carData.car_group_id,
+          plate_img: response.plate_img ?? "",
+          image: response.image ?? null,
+          car_type: null,
+          plate_type: {
+            id: carData.plate_type_id,
+            name: metaData?.car_types?.find((t) => t.id === carData.car_type_id)
+              ?.name ?? { ar: "", en: "" },
+          },
+          city: metaData?.cities?.find((c) => c.id === carData.city_id) ?? {
+            id: carData.city_id,
+            business_id: 1,
+            name: { en: "", ar: "", code: "" },
+            code: "",
+            is_active: 1,
+            order_column: 1,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        } as Car);
+      onVehicleAdded(newCar);
+      setOpen(false);
+      resetForm();
+    } catch (err: unknown) {
+      console.error("Error creating vehicle:", err);
+
+      // Handle specific API validation errors
+      if (err && typeof err === "object" && "response" in err) {
+        const error = err as {
+          response?: {
+            data?: { message?: string; errors?: Record<string, string[]> };
+          };
+        };
+        if (error.response?.data?.message) {
+          setError(error.response.data.message);
+        } else if (error.response?.data?.errors) {
+          const errorMessages = Object.values(error.response.data.errors)
+            .flat()
+            .join(", ");
+          setError(`Validation errors: ${errorMessages}`);
+        } else {
+          setError("Failed to create vehicle. Please try again.");
+        }
+      } else {
+        setError("Failed to create vehicle. Please try again.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleInputChange =
+    (field: keyof typeof formData) => (value: string) => {
+      setFormData((prev) => ({ ...prev, [field]: value }));
+    };
+
+  const resetForm = () => {
+    setFormData({
+      city_id: "",
+      car_brand_id: "",
+      car_model_id: "",
+      plate_type_id: "",
+      car_type_id: "",
+      car_group_id: "",
+      color: "",
+      color_name: "",
+      year: "",
+      code: "",
+      numbers: "",
+    });
+    setError("");
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(newOpen) => {
+        setOpen(newOpen);
+        if (!newOpen) {
+          resetForm();
+        }
+      }}
+    >
+      <DialogTrigger asChild>
+        <Button
+          variant="outline"
+          size="icon"
+          className="ml-2 h-10 w-10 border-green-500/40 hover:border-green-500/60"
+          disabled={disabled}
+        >
+          <Plus className="h-4 w-4" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Add New Vehicle</DialogTitle>
+          <DialogDescription>
+            Add a new vehicle for the selected customer. All required fields
+            must be filled.
+          </DialogDescription>
+        </DialogHeader>
+
+        {error && (
+          <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-300 text-sm">
+            {error}
+          </div>
+        )}
+
+        {isLoadingMeta ? (
+          <div className="text-center py-8 text-green-300">
+            Loading form data...
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* City */}
+              <div className="space-y-2">
+                <label
+                  htmlFor="city"
+                  className="text-sm font-medium text-green-300"
+                >
+                  City *
+                </label>
+                <Select
+                  value={formData.city_id}
+                  onValueChange={handleInputChange("city_id")}
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a city" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {metaData?.cities?.map((city) => (
+                      <SelectItem key={city.id} value={city.id.toString()}>
+                        {city.name.en} ({city.name.ar})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {/* Car Brand */}
+              <div className="space-y-2">
+                <label
+                  htmlFor="car-brand"
+                  className="text-sm font-medium text-green-300"
+                >
+                  Car Brand *
+                </label>
+                <Select
+                  value={formData.car_brand_id}
+                  onValueChange={handleInputChange("car_brand_id")}
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a brand" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {metaData?.car_brands?.map((brand) => (
+                      <SelectItem key={brand.id} value={brand.id.toString()}>
+                        {brand.name.en} ({brand.name.ar})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {/* Car Group */}
+              <div className="space-y-2">
+                <label
+                  htmlFor="car-group"
+                  className="text-sm font-medium text-green-300"
+                >
+                  Car Group *
+                </label>
+                <Select
+                  value={formData.car_group_id}
+                  onValueChange={handleInputChange("car_group_id")}
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a group" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {metaData?.car_groups?.map((group) => (
+                      <SelectItem key={group.id} value={group.id.toString()}>
+                        {group.name.en} ({group.name.ar})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {/* Car Type */}
+              <div className="space-y-2">
+                <label
+                  htmlFor="car-type"
+                  className="text-sm font-medium text-green-300"
+                >
+                  Car Type *
+                </label>
+                <Select
+                  value={formData.car_type_id}
+                  onValueChange={handleInputChange("car_type_id")}
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {metaData?.car_types?.map((type) => (
+                      <SelectItem key={type.id} value={type.id}>
+                        {type.name.en} ({type.name.ar})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>{" "}
+              {/* Plate Type */}
+              <div className="space-y-2">
+                <label
+                  htmlFor="plate-type"
+                  className="text-sm font-medium text-green-300"
+                >
+                  Plate Type *
+                </label>
+                <Select
+                  value={formData.plate_type_id}
+                  onValueChange={handleInputChange("plate_type_id")}
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select plate type" />
+                  </SelectTrigger>{" "}
+                  <SelectContent>
+                    {metaData?.car_types?.map((type) => (
+                      <SelectItem key={type.id} value={type.id}>
+                        {type.name.en} ({type.name.ar})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {/* Year */}
+              <div className="space-y-2">
+                <label
+                  htmlFor="year"
+                  className="text-sm font-medium text-green-300"
+                >
+                  Year *
+                </label>
+                <Input
+                  id="year"
+                  type="number"
+                  placeholder="2024"
+                  value={formData.year}
+                  onChange={(e) => handleInputChange("year")(e.target.value)}
+                  required
+                  disabled={isLoading}
+                  min="1900"
+                  max="2030"
+                />
+              </div>
+              {/* Color */}
+              <div className="space-y-2">
+                <label
+                  htmlFor="color"
+                  className="text-sm font-medium text-green-300"
+                >
+                  Color *
+                </label>
+                <Input
+                  id="color"
+                  type="text"
+                  placeholder="Red"
+                  value={formData.color}
+                  onChange={(e) => handleInputChange("color")(e.target.value)}
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+              {/* Color Name */}
+              <div className="space-y-2">
+                <label
+                  htmlFor="color-name"
+                  className="text-sm font-medium text-green-300"
+                >
+                  Color Name *
+                </label>
+                <Input
+                  id="color-name"
+                  type="text"
+                  placeholder="احمر"
+                  value={formData.color_name}
+                  onChange={(e) =>
+                    handleInputChange("color_name")(e.target.value)
+                  }
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+              {/* Plate Code */}
+              <div className="space-y-2">
+                <label
+                  htmlFor="code"
+                  className="text-sm font-medium text-green-300"
+                >
+                  Plate Code *
+                </label>
+                <Input
+                  id="code"
+                  type="text"
+                  placeholder="A"
+                  value={formData.code}
+                  onChange={(e) => handleInputChange("code")(e.target.value)}
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+              {/* Plate Numbers */}
+              <div className="space-y-2">
+                <label
+                  htmlFor="numbers"
+                  className="text-sm font-medium text-green-300"
+                >
+                  Plate Numbers *
+                </label>
+                <Input
+                  id="numbers"
+                  type="text"
+                  placeholder="12345"
+                  value={formData.numbers}
+                  onChange={(e) => handleInputChange("numbers")(e.target.value)}
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpen(false)}
+                disabled={isLoading}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isLoading || isLoadingMeta}>
+                {isLoading ? "Creating..." : "Create Vehicle"}
+              </Button>
+            </div>
+          </form>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};

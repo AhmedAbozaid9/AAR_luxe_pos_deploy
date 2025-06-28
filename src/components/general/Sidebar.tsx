@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { getCustomers, type Customer } from "../../api/getCustomers";
+import { getCustomers, type Car, type Customer } from "../../api/getCustomers";
 import { useCustomerStore } from "../../stores/customerStore";
 import {
   Select,
@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "../ui/select";
 import { AddCustomerDialog } from "./AddCustomerDialog";
+import { AddVehicleDialog } from "./AddVehicleDialog";
 
 const Sidebar = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -80,6 +81,22 @@ const Sidebar = () => {
     }
   };
 
+  const handleVehicleAdded = (newVehicle: Car) => {
+    if (selectedCustomer) {
+      const updatedCustomer = {
+        ...selectedCustomer,
+        cars: [...selectedCustomer.cars, newVehicle],
+      };
+      setSelectedCustomer(updatedCustomer);
+      setCustomers((prev) =>
+        prev.map((customer) =>
+          customer.id === selectedCustomer.id ? updatedCustomer : customer
+        )
+      );
+      setSelectedCar(newVehicle);
+    }
+  };
+
   return (
     <div className="h-full  bg-white/5 backdrop-blur-xl border-r border-green-500/20 p-6">
       <motion.div
@@ -146,28 +163,36 @@ const Sidebar = () => {
         {/* Car Select */}
         <div className="space-y-2">
           <div className="text-sm font-medium text-green-300">Vehicle</div>
-          <Select
-            value={selectedCar?.id.toString() ?? ""}
-            onValueChange={handleCarChange}
-            disabled={!selectedCustomer || selectedCustomer.cars.length === 0}
-          >
-            <motion.div
-              whileFocus={{ scale: 1.02 }}
-              transition={{ duration: 0.2 }}
+          <div className="flex items-center space-x-2">
+            <Select
+              value={selectedCar?.id.toString() ?? ""}
+              onValueChange={handleCarChange}
+              disabled={!selectedCustomer || selectedCustomer.cars.length === 0}
             >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder={getCarSelectPlaceholder()} />
-              </SelectTrigger>
-            </motion.div>
-            <SelectContent>
-              {selectedCustomer?.cars.map((car) => (
-                <SelectItem key={car.id} value={car.id.toString()}>
-                  {car.year} {car.color_name} - {car.code} {car.numbers} (
-                  {car.city.name.en})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+              <motion.div
+                whileFocus={{ scale: 1.02 }}
+                transition={{ duration: 0.2 }}
+                className="flex-1"
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder={getCarSelectPlaceholder()} />
+                </SelectTrigger>
+              </motion.div>
+              <SelectContent>
+                {selectedCustomer?.cars.map((car) => (
+                  <SelectItem key={car.id} value={car.id.toString()}>
+                    {car.year} {car.color_name} - {car.code} {car.numbers} (
+                    {car.city.name.en})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <AddVehicleDialog
+              customerId={selectedCustomer?.id ?? 0}
+              onVehicleAdded={handleVehicleAdded}
+              disabled={!selectedCustomer}
+            />
+          </div>
         </div>
         {/* Selected Info Display */}
         {selectedCustomer && (
