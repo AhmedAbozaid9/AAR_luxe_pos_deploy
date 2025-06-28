@@ -110,6 +110,7 @@ DialogDescription.displayName = DialogPrimitive.Description.displayName;
 
 export {
   Dialog,
+<<<<<<< HEAD
   DialogClose,
   DialogContent,
   DialogDescription,
@@ -119,4 +120,15 @@ export {
   DialogPortal,
   DialogTitle,
   DialogTrigger,
+=======
+  DialogPortal,
+  DialogOverlay,
+  DialogClose,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+>>>>>>> b7e6b9de065cec5c34fed6bf2b1a8d0823e4f461
 };
