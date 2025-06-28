@@ -1,10 +1,12 @@
 import { motion, useAnimationControls } from "framer-motion";
 import { useEffect } from "react";
 import { Link, useLocation } from "react-router";
+import { useUserStore } from "../../stores/userStore";
 
 const Header = () => {
   const location = useLocation();
   const controls = useAnimationControls();
+  const { user, logout } = useUserStore();
 
   const navItems = [
     { path: "/", name: "Services" },
@@ -18,6 +20,10 @@ const Header = () => {
     });
   }, [location.pathname, controls]);
 
+  const handleLogout = () => {
+    logout();
+  };
+
   return (
     <motion.header
       className="bg-gradient-to-r from-green-50 via-white to-green-50 backdrop-blur-sm border-b border-green-200/30 px-8 py-4 shadow-sm"
@@ -25,7 +31,8 @@ const Header = () => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}
     >
-      <div className="flex items-center justify-start">
+      {" "}
+      <div className="flex items-center justify-between w-full">
         <motion.nav className="flex items-center space-x-2" animate={controls}>
           {navItems.map((item, index) => {
             const isActive = location.pathname === item.path;
@@ -123,6 +130,35 @@ const Header = () => {
             );
           })}
         </motion.nav>
+
+        {/* User info and logout */}
+        <motion.div
+          className="flex items-center space-x-4"
+          initial={{ opacity: 0, x: 30 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+        >
+          {/* User greeting */}
+          <motion.div
+            className="text-gray-700 font-medium"
+            whileHover={{ scale: 1.02 }}
+          >
+            Welcome,{" "}
+            <span className="text-green-600 font-semibold">
+              {user?.name.en}
+            </span>
+          </motion.div>
+
+          {/* Logout button */}
+          <motion.button
+            onClick={handleLogout}
+            className="px-4 py-2 text-sm font-medium text-red-600 hover:text-white hover:bg-red-600 border border-red-300 hover:border-red-600 rounded-lg transition-all duration-300 hover:shadow-lg"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            Logout
+          </motion.button>
+        </motion.div>
       </div>
     </motion.header>
   );

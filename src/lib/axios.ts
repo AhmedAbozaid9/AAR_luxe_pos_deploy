@@ -16,12 +16,12 @@ axios.interceptors.request.use(
   (config: InternalAxiosRequestConfig): InternalAxiosRequestConfig => {
     // Get token from cookie instead of localStorage
     const token = Cookies.get("aar_luxe_token");
+    config.headers["business-id"] = "1";
     if (token) {
       // Add the token to Authorization header
       config.headers.Authorization = `Bearer ${token}`;
       config.headers["Content-Type"] = "application/json";
       config.headers["Accept"] = "application/json";
-      config.headers["business-id"] = "1";
     }
     return config;
   },
@@ -41,3 +41,6 @@ axios.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// Default export for easier imports
+export default axios;
