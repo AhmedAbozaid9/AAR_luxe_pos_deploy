@@ -69,11 +69,9 @@ export interface ServicesResponse {
   // Add other pagination fields as needed
 }
 
-export const getServices = async (
-  search?: string
-): Promise<ServicesResponse> => {
+export const getServices = async (q?: string): Promise<ServicesResponse> => {
   try {
-    const params = search ? { search } : {};
+    const params = q ? { q } : {};
     const response = await axios.get<ServicesResponse>("/services", { params });
     return response.data;
   } catch (error) {

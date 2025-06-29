@@ -49,11 +49,9 @@ export interface ProductsResponse {
   // Add other pagination fields as needed
 }
 
-export const getProducts = async (
-  search?: string
-): Promise<ProductsResponse> => {
+export const getProducts = async (q?: string): Promise<ProductsResponse> => {
   try {
-    const params = search ? { search } : {};
+    const params = q ? { q } : {};
     const response = await axios.get<ProductsResponse>("/products", { params });
     return response.data;
   } catch (error) {
