@@ -100,10 +100,10 @@ const Packages = () => {
                 delay: index * 0.1,
                 ease: "easeOut",
               }}
-              className="bg-white rounded-3xl shadow-sm hover:shadow-xl transition-all duration-500 group overflow-hidden border border-gray-100 h-[600px] flex flex-col"
+              className="bg-white rounded-3xl shadow-sm hover:shadow-xl transition-all duration-500 group overflow-hidden border border-gray-100 flex flex-col h-full"
             >
               {/* Package Image */}
-              <div className="relative h-48 bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
+              <div className="relative h-48 bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden flex-shrink-0">
                 {pkg.image?.url ? (
                   <img
                     src={pkg.image.url}
@@ -128,7 +128,7 @@ const Packages = () => {
               </div>
 
               {/* Package Info */}
-              <div className="p-6">
+              <div className="p-6 flex flex-col flex-grow">
                 <h3 className="text-xl font-bold text-gray-800 mb-2">
                   {pkg.name.en}
                 </h3>
@@ -155,7 +155,7 @@ const Packages = () => {
                 </div>{" "}
                 {/* Included Services */}
                 {pkg.included && pkg.included.length > 0 && (
-                  <div className="mb-4">
+                  <div className="mb-4 flex-grow">
                     <h4 className="text-sm font-semibold text-gray-700 mb-2">
                       Included Services:
                     </h4>
@@ -178,7 +178,7 @@ const Packages = () => {
                   </div>
                 )}
                 {/* Price and Action */}
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between mt-auto pt-4">
                   <div className="text-2xl font-bold text-green-600">
                     {getPriceDisplay(pkg)}
                   </div>
