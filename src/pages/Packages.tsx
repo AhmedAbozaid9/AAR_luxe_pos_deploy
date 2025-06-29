@@ -34,12 +34,11 @@ const Packages = () => {
       setLoading(false);
     }
   };
-
   const getPriceDisplay = (pkg: Package) => {
     if (pkg.prices_min_price === null || pkg.prices_min_price === undefined) {
-      return "Price on request";
+      return { price: null, text: "Price on request" };
     }
-    return `AED ${pkg.prices_min_price.toLocaleString()}`;
+    return { price: pkg.prices_min_price.toLocaleString(), text: null };
   };
 
   if (error) {
@@ -176,11 +175,22 @@ const Packages = () => {
                       )}
                     </div>
                   </div>
-                )}
+                )}{" "}
                 {/* Price and Action */}
                 <div className="flex items-center justify-between mt-auto pt-4">
                   <div className="text-2xl font-bold text-green-600">
-                    {getPriceDisplay(pkg)}
+                    {(() => {
+                      const priceInfo = getPriceDisplay(pkg);
+                      if (priceInfo.text) {
+                        return priceInfo.text;
+                      }
+                      return (
+                        <>
+                          {priceInfo.price}
+                          <sub className="text-sm font-normal ml-1">AED</sub>
+                        </>
+                      );
+                    })()}
                   </div>
 
                   <motion.button

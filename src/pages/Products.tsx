@@ -34,14 +34,13 @@ const Products = () => {
       setLoading(false);
     }
   };
-
   // Function to get the price display with discount
   const getPriceDisplay = (product: Product) => {
     const hasDiscount = product.before_discount_price > product.price;
     return {
-      currentPrice: `AED ${product.price.toLocaleString()}`,
+      currentPrice: product.price.toLocaleString(),
       originalPrice: hasDiscount
-        ? `AED ${product.before_discount_price.toLocaleString()}`
+        ? product.before_discount_price.toLocaleString()
         : null,
       discount: hasDiscount
         ? Math.round(
@@ -216,17 +215,18 @@ const Products = () => {
                         </div>
                       </div>
                     )}
-                  </div>
-
+                  </div>{" "}
                   {/* Price and Action */}
                   <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                     <div className="flex flex-col">
                       <div className="text-2xl font-bold text-green-600">
                         {priceInfo.currentPrice}
+                        <sub className="text-sm font-normal ml-1">AED</sub>
                       </div>
                       {priceInfo.originalPrice && (
                         <div className="text-sm text-gray-500 line-through">
                           {priceInfo.originalPrice}
+                          <sub className="text-xs font-normal ml-1">AED</sub>
                         </div>
                       )}
                     </div>
