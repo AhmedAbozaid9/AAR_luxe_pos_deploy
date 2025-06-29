@@ -8,12 +8,14 @@ export interface User {
   name: {
     en: string;
   };
-  created_at: string;
-  updated_at: string;
-  hire_date: string | null;
-  salary: string;
   email: string;
-  email_verified_at: string | null;
+  branch_id?: number;
+  // Optional fields that might come from login but not from profile endpoint
+  created_at?: string;
+  updated_at?: string;
+  hire_date?: string | null;
+  salary?: string;
+  email_verified_at?: string | null;
 }
 
 interface UserState {
