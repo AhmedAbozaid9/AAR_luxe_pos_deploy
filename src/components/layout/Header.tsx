@@ -60,7 +60,7 @@ const Header = () => {
           {/* Dashboard button */}
           <div className="flex items-center">
             <Link
-              to="https://beta.aarluxe.ae/admin/login"
+              to="https://cp.aarluxe.ae/admin/login"
               target="_blank"
               className="px-6 py-3 text-base font-semibold text-white bg-gradient-to-r from-gray-800 to-gray-900 rounded-xl hover:from-gray-700 hover:to-gray-800 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center"
             >

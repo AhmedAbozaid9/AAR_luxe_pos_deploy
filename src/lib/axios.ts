@@ -7,7 +7,7 @@ import Axios from "axios";
 import Cookies from "js-cookie";
 
 export const axios = Axios.create({
-  baseURL: "https://beta.aarluxe.ae/api",
+  baseURL: "https://cp.aarluxe.ae/api",
   timeout: 10000,
 });
 
@@ -16,13 +16,14 @@ axios.interceptors.request.use(
   (config: InternalAxiosRequestConfig): InternalAxiosRequestConfig => {
     // Get token from cookie instead of localStorage
     const token = Cookies.get("aar_luxe_token");
-    config.headers["business-id"] = "1";
     if (token) {
       // Add the token to Authorization header
       config.headers.Authorization = `Bearer ${token}`;
+    }
+
       config.headers["Content-Type"] = "application/json";
       config.headers["Accept"] = "application/json";
-    }
+      config.headers["business-id"] = "1";
     return config;
   },
   (error: AxiosError): Promise<AxiosError> => Promise.reject(error)
