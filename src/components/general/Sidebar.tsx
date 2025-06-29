@@ -406,20 +406,6 @@ const Sidebar = () => {
             )}
           </div>
         )}
-        {/* Spacer */}
-        <div className="flex-1"></div>
-        {/* Clear Selection Button - Compact */}
-        {(selectedCustomer || selectedCar) && (
-          <motion.button
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            onClick={clearSelection}
-            className="flex items-center justify-center space-x-2 w-full py-2 px-3 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-300 rounded-lg transition-all duration-300 text-xs font-medium"
-          >
-            <X size={14} />
-            <span>Clear Selection</span>
-          </motion.button>
-        )}
       </motion.div>
     </div>
   );

@@ -1,4 +1,5 @@
 import { motion, useAnimationControls } from "framer-motion";
+import { User } from "lucide-react";
 import { useEffect } from "react";
 import { Link, useLocation } from "react-router";
 import { useUserStore } from "../../stores/userStore";
@@ -6,172 +7,119 @@ import { useUserStore } from "../../stores/userStore";
 const Header = () => {
   const location = useLocation();
   const controls = useAnimationControls();
-  const { user, logout } = useUserStore();
+  const { user } = useUserStore();
   const navItems = [
-    { path: "/", name: "Services" },
+    { path: "/services", name: "Services" },
     { path: "/packages", name: "Packages" },
     { path: "/products", name: "Products" },
   ];
-
   useEffect(() => {
     controls.start({
       scale: [1, 1.02, 1],
       transition: { duration: 0.3 },
     });
   }, [location.pathname, controls]);
-
-  const handleLogout = () => {
-    logout();
-  };
-
   return (
     <motion.header
-      className="bg-gradient-to-r from-green-50 via-white to-green-50 backdrop-blur-sm border-b border-green-200/30 px-8 py-4 shadow-sm"
-      initial={{ opacity: 0, y: -30 }}
+      className="bg-white/80 backdrop-blur-md border-b border-gray-100 px-6 py-3"
+      initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}
+      transition={{ duration: 0.5 }}
     >
       {" "}
-      <div className="flex items-center justify-between w-full">
-        <motion.nav className="flex items-center space-x-2" animate={controls}>
+      <div className="flex items-center justify-between w-full max-w-7xl mx-auto">
+        <motion.nav className="flex items-center space-x-1" animate={controls}>
           {navItems.map((item, index) => {
             const isActive = location.pathname === item.path;
 
             return (
               <motion.div
                 key={item.path}
-                initial={{ opacity: 0, x: -30, scale: 0.8 }}
-                animate={{ opacity: 1, x: 0, scale: 1 }}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{
-                  duration: 0.7,
-                  delay: index * 0.15,
-                  ease: [0.25, 0.46, 0.45, 0.94],
+                  duration: 0.4,
+                  delay: index * 0.1,
                 }}
-                className="relative"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+                whileHover={{ y: -1 }}
+                whileTap={{ y: 0 }}
               >
                 <Link
                   to={item.path}
-                  className={`relative px-8 py-4 text-sm font-bold rounded-2xl transition-all duration-500 ease-out block ${
+                  className={`relative px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
                     isActive
-                      ? "text-white bg-gradient-to-r from-green-500 to-green-600 shadow-2xl shadow-green-500/40 border border-green-400"
-                      : "text-gray-700 hover:text-green-600 hover:bg-gradient-to-r hover:from-green-50 hover:to-green-100 hover:shadow-lg border border-transparent hover:border-green-200"
+                      ? "text-gray-900 bg-gray-100"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                   }`}
                 >
-                  <motion.span
-                    className="relative z-20 block"
-                    initial={{ y: 0 }}
-                    whileHover={{
-                      y: isActive ? 0 : -1,
-                      transition: { duration: 0.2 },
-                    }}
-                    whileTap={{ y: 1 }}
-                  >
-                    {item.name}
-                  </motion.span>
-
-                  {/* Active indicator with better animation */}
+                  {item.name}
                   {isActive && (
-                    <>
-                      <motion.div
-                        className="absolute inset-0 bg-gradient-to-r from-green-500 to-green-600 rounded-2xl"
-                        layoutId="activeTab"
-                        initial={{ scale: 0.8, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{
-                          type: "spring",
-                          stiffness: 400,
-                          damping: 30,
-                          duration: 0.6,
-                        }}
-                      />
-                      {/* Glow effect */}
-                      <motion.div
-                        className="absolute inset-0 bg-gradient-to-r from-green-400 to-green-500 rounded-2xl blur-sm"
-                        initial={{ scale: 0.8, opacity: 0 }}
-                        animate={{ scale: 1.1, opacity: 0.6 }}
-                        transition={{
-                          type: "spring",
-                          stiffness: 300,
-                          damping: 25,
-                          delay: 0.1,
-                        }}
-                      />
-                    </>
+                    <motion.div
+                      className="absolute bottom-0 left-1/2 w-1 h-1 bg-gray-900 rounded-full"
+                      layoutId="activeIndicator"
+                      initial={{ scale: 0, x: "-50%" }}
+                      animate={{ scale: 1, x: "-50%" }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 400,
+                        damping: 30,
+                      }}
+                    />
                   )}
-
-                  {/* Hover effect with ripple */}
-                  <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-green-50 to-green-100 rounded-2xl opacity-0"
-                    whileHover={{
-                      opacity: isActive ? 0 : 1,
-                      scale: isActive ? 1 : [1, 1.05, 1],
-                      transition: { duration: 0.3 },
-                    }}
-                  />
-
-                  {/* Subtle shine effect */}
-                  <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent rounded-2xl opacity-0"
-                    animate={{
-                      x: isActive ? ["-100%", "100%"] : 0,
-                      opacity: isActive ? [0, 1, 0] : 0,
-                    }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                      repeatDelay: 3,
-                      ease: "easeInOut",
-                    }}
-                  />
                 </Link>
               </motion.div>
             );
-          })}
+          })}{" "}
         </motion.nav>
 
-        {/* User info and logout */}
-        <motion.div
-          className="flex items-center space-x-4"
-          initial={{ opacity: 0, x: 30 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6, delay: 0.3 }}
-        >
-          {/* User greeting */}
+        {/* Right side - Avatar and Dashboard */}
+        <div className="flex items-center space-x-3">
+          {/* User Avatar */}
           <motion.div
-            className="text-gray-700 font-medium"
-            whileHover={{ scale: 1.02 }}
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+            className="flex items-center"
           >
-            Welcome,{" "}
-            <span className="text-green-600 font-semibold">
-              {user?.name.en}
-            </span>
+            <Link to="/profile" className="flex items-center">
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="relative group flex items-center justify-center"
+              >
+                <div className="w-9 h-9 rounded-full bg-gray-900 flex items-center justify-center text-white text-sm font-medium shadow-sm border border-gray-200 group-hover:border-gray-300 transition-all duration-200">
+                  {user?.name?.en ? (
+                    <span>
+                      {user.name.en
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .toUpperCase()}
+                    </span>
+                  ) : (
+                    <User size={16} />
+                  )}
+                </div>
+              </motion.div>
+            </Link>
           </motion.div>
 
-          {/* Logout button */}
-          <motion.button
-            className="px-4 py-2 text-sm font-medium text-blue-600 hover:text-white hover:bg-blue-600 border border-blue-300 hover:border-blue-600 rounded-lg transition-all duration-300 hover:shadow-lg"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+          {/* Dashboard button */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4, delay: 0.3 }}
+            className="flex items-center"
           >
             <Link
-              to="/https://beta.aarluxe.ae/admin/login"
-              onClick={handleLogout}
+              to="https://beta.aarluxe.ae/admin/login"
               target="_blank"
+              className="px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-all duration-200 shadow-sm flex items-center justify-center"
             >
               Dashboard
             </Link>
-          </motion.button>
-          <motion.button
-            onClick={handleLogout}
-            className="px-4 py-2 text-sm font-medium text-red-600 hover:text-white hover:bg-red-600 border border-red-300 hover:border-red-600 rounded-lg transition-all duration-300 hover:shadow-lg"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            Logout
-          </motion.button>
-        </motion.div>
+          </motion.div>
+        </div>
       </div>
     </motion.header>
   );

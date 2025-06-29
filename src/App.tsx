@@ -4,6 +4,7 @@ import Layout from "./components/layout/Layout";
 import LoginPage from "./pages/LoginPage";
 import Packages from "./pages/Packages";
 import Products from "./pages/Products";
+import Profile from "./pages/Profile";
 import Services from "./pages/Services";
 
 function App() {
@@ -22,10 +23,12 @@ function App() {
             </ProtectedRoute>
           }
         >
+          {" "}
           <Route index element={<Navigate to="services" />} />
           <Route path="services" element={<Services />} />
           <Route path="packages" element={<Packages />} />
           <Route path="products" element={<Products />} />
+          <Route path="profile" element={<Profile />} />
         </Route>
       </Routes>
     </BrowserRouter>
