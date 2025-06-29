@@ -26,7 +26,7 @@ export const AddCustomerDialog = ({
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
-    phone_country: "EG",
+    phone_country: "AE",
   });
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,11 +61,10 @@ export const AddCustomerDialog = ({
           cars: response.cars ?? [],
         };
       }
-
       if (customer?.id) {
         onCustomerAdded(customer);
         setOpen(false);
-        setFormData({ name: "", phone: "", phone_country: "EG" });
+        setFormData({ name: "", phone: "", phone_country: "AE" });
       } else {
         console.error("Invalid customer data received:", response);
         setError("Invalid response from server. Please try again.");
@@ -83,9 +82,8 @@ export const AddCustomerDialog = ({
     (e: React.ChangeEvent<HTMLInputElement>) => {
       setFormData((prev) => ({ ...prev, [field]: e.target.value }));
     };
-
   const resetForm = () => {
-    setFormData({ name: "", phone: "", phone_country: "EG" });
+    setFormData({ name: "", phone: "", phone_country: "AE" });
     setError("");
   };
 
@@ -164,16 +162,16 @@ export const AddCustomerDialog = ({
               className="text-sm font-medium text-green-300"
             >
               Country Code
-            </label>
+            </label>{" "}
             <Input
               id="country-code"
               type="text"
+              placeholder="Enter country code (e.g., AE)"
               value={formData.phone_country}
               onChange={handleInputChange("phone_country")}
               required
               disabled={isLoading}
-              readOnly
-              className="bg-gray-700/50"
+              className="bg-gray-800/50 border-gray-600"
             />
           </div>
           <div className="flex justify-end space-x-2 pt-4">
