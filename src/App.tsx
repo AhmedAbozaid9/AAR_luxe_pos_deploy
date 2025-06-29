@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes } from "react-router";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import Layout from "./components/layout/Layout";
 import LoginPage from "./pages/LoginPage";
@@ -22,7 +22,7 @@ function App() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<Services />} />
+          <Route index element={<Navigate to="services" />} />
           <Route path="services" element={<Services />} />
           <Route path="packages" element={<Packages />} />
           <Route path="products" element={<Products />} />
