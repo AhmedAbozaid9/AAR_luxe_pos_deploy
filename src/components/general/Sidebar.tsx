@@ -60,7 +60,6 @@ const Sidebar = () => {
       fetchCustomers();
     }
   }, [customerSearchQuery, debounceSearch]);
-
   // Filter cars based on search query
   const filteredCars =
     selectedCustomer?.cars.filter((car) =>
@@ -70,12 +69,24 @@ const Sidebar = () => {
     ) || [];
 
   const handleCustomerSelect = (customer: Customer) => {
-    setSelectedCustomer(customer);
-    setIsCarListOpen(true); // Open car list when customer is selected
+    if (selectedCustomer?.id === customer.id) {
+      // If clicking the same customer, deselect it
+      clearSelection();
+    } else {
+      // Select the new customer
+      setSelectedCustomer(customer);
+      setIsCarListOpen(true); // Open car list when customer is selected
+    }
   };
 
   const handleCarSelect = (car: Car) => {
-    setSelectedCar(car);
+    if (selectedCar?.id === car.id) {
+      // If clicking the same car, deselect it
+      setSelectedCar(null);
+    } else {
+      // Select the new car
+      setSelectedCar(car);
+    }
   };
 
   const handleCustomerAdded = (newCustomer: Customer) => {
@@ -121,7 +132,6 @@ const Sidebar = () => {
             Choose a customer and their vehicle
           </p>
         </div>
-
         {/* Error message */}
         {error && (
           <motion.div
@@ -131,126 +141,37 @@ const Sidebar = () => {
           >
             {error}
           </motion.div>
-        )}
-
+        )}{" "}
         {/* Customer Section */}
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <button
-              onClick={() => setIsCustomerListOpen(!isCustomerListOpen)}
-              className="flex items-center space-x-2 text-green-300 hover:text-white transition-colors"
-            >
-              {isCustomerListOpen ? (
-                <ChevronDown size={16} />
-              ) : (
-                <ChevronRight size={16} />
-              )}
-              <span className="font-medium">Customers</span>
-              <span className="text-xs bg-green-500/20 px-2 py-1 rounded">
-                {customers.length}
-              </span>
-            </button>{" "}
-            <AddCustomerDialog onCustomerAdded={handleCustomerAdded} />
-          </div>
-
-          {isCustomerListOpen && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="space-y-2"
-            >
-              {/* Customer Search */}
-              <div className="relative">
-                <Search
-                  size={14}
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-green-300/60"
-                />
-                <input
-                  type="text"
-                  placeholder="Search customers..."
-                  value={customerSearchQuery}
-                  onChange={(e) => setCustomerSearchQuery(e.target.value)}
-                  className="w-full pl-8 pr-8 py-2 bg-white/10 border border-green-500/20 rounded-lg text-white placeholder-green-300/60 text-sm focus:outline-none focus:border-green-500/40"
-                />
-                {customerSearchQuery && (
-                  <button
-                    onClick={() => setCustomerSearchQuery("")}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-green-300/60 hover:text-white"
-                  >
-                    <X size={14} />
-                  </button>
-                )}
+          {!selectedCustomer ? (
+            <>
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => setIsCustomerListOpen(!isCustomerListOpen)}
+                  className="flex items-center space-x-2 text-green-300 hover:text-white transition-colors"
+                >
+                  {isCustomerListOpen ? (
+                    <ChevronDown size={16} />
+                  ) : (
+                    <ChevronRight size={16} />
+                  )}
+                  <span className="font-medium">Customers</span>
+                  <span className="text-xs bg-green-500/20 px-2 py-1 rounded">
+                    {customers.length}
+                  </span>
+                </button>{" "}
+                <AddCustomerDialog onCustomerAdded={handleCustomerAdded} />
               </div>
 
-              {/* Customer List */}
-              <div className="max-h-48 overflow-y-auto space-y-1 scrollbar-thin scrollbar-thumb-green-500/20">
-                {isLoadingCustomers && (
-                  <div className="text-center py-4 text-green-300/60 text-sm">
-                    Loading customers...
-                  </div>
-                )}
-                {!isLoadingCustomers && customers.length === 0 && (
-                  <div className="text-center py-4 text-green-300/60 text-sm">
-                    No customers found
-                  </div>
-                )}
-                {!isLoadingCustomers &&
-                  customers.length > 0 &&
-                  customers.map((customer) => (
-                    <motion.button
-                      key={customer.id}
-                      onClick={() => handleCustomerSelect(customer)}
-                      className={`w-full text-left p-2 rounded-lg transition-all text-sm ${
-                        selectedCustomer?.id === customer.id
-                          ? "bg-green-500/20 border border-green-500/40 text-white"
-                          : "bg-white/5 hover:bg-white/10 text-green-300 border border-transparent"
-                      }`}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      <div className="font-medium">{customer.name}</div>
-                      <div className="text-xs opacity-80">{customer.email}</div>
-                    </motion.button>
-                  ))}
-              </div>
-            </motion.div>
-          )}
-        </div>
-
-        {/* Vehicle Section */}
-        {selectedCustomer && (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <button
-                onClick={() => setIsCarListOpen(!isCarListOpen)}
-                className="flex items-center space-x-2 text-green-300 hover:text-white transition-colors"
-              >
-                {isCarListOpen ? (
-                  <ChevronDown size={16} />
-                ) : (
-                  <ChevronRight size={16} />
-                )}
-                <span className="font-medium">Vehicles</span>
-                <span className="text-xs bg-green-500/20 px-2 py-1 rounded">
-                  {selectedCustomer.cars.length}
-                </span>
-              </button>{" "}
-              <AddVehicleDialog
-                customerId={selectedCustomer.id}
-                onVehicleAdded={handleVehicleAdded}
-              />
-            </div>
-
-            {isCarListOpen && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="space-y-2"
-              >
-                {/* Car Search */}
-                {selectedCustomer.cars.length > 0 && (
+              {isCustomerListOpen && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="space-y-2"
+                >
+                  {/* Customer Search */}
                   <div className="relative">
                     <Search
                       size={14}
@@ -258,64 +179,228 @@ const Sidebar = () => {
                     />
                     <input
                       type="text"
-                      placeholder="Search vehicles..."
-                      value={carSearchQuery}
-                      onChange={(e) => setCarSearchQuery(e.target.value)}
+                      placeholder="Search customers..."
+                      value={customerSearchQuery}
+                      onChange={(e) => setCustomerSearchQuery(e.target.value)}
                       className="w-full pl-8 pr-8 py-2 bg-white/10 border border-green-500/20 rounded-lg text-white placeholder-green-300/60 text-sm focus:outline-none focus:border-green-500/40"
                     />
-                    {carSearchQuery && (
+                    {customerSearchQuery && (
                       <button
-                        onClick={() => setCarSearchQuery("")}
+                        onClick={() => setCustomerSearchQuery("")}
                         className="absolute right-3 top-1/2 transform -translate-y-1/2 text-green-300/60 hover:text-white"
                       >
                         <X size={14} />
                       </button>
                     )}
-                  </div>
-                )}{" "}
-                {/* Car List */}
-                <div className="max-h-48 overflow-y-auto space-y-1 scrollbar-thin scrollbar-thumb-green-500/20">
-                  {selectedCustomer.cars.length === 0 && (
-                    <div className="text-center py-4 text-green-300/60 text-sm">
-                      No vehicles available
-                    </div>
-                  )}
-                  {selectedCustomer.cars.length > 0 &&
-                    filteredCars.length === 0 && (
+                  </div>{" "}
+                  {/* Customer List */}
+                  <div className="max-h-48 overflow-y-auto overflow-x-hidden space-y-1 scrollbar-thin scrollbar-thumb-green-500/20">
+                    {isLoadingCustomers && (
                       <div className="text-center py-4 text-green-300/60 text-sm">
-                        No vehicles match your search
+                        Loading customers...
                       </div>
                     )}
-                  {filteredCars.length > 0 &&
-                    filteredCars.map((car) => (
-                      <motion.button
-                        key={car.id}
-                        onClick={() => handleCarSelect(car)}
-                        className={`w-full text-left p-2 rounded-lg transition-all text-sm ${
-                          selectedCar?.id === car.id
-                            ? "bg-green-500/20 border border-green-500/40 text-white"
-                            : "bg-white/5 hover:bg-white/10 text-green-300 border border-transparent"
-                        }`}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        <div className="font-medium">
-                          {car.year} {car.color_name}
-                        </div>
-                        <div className="text-xs opacity-80">
-                          {car.code} {car.numbers} • {car.city.name.en}
-                        </div>
-                      </motion.button>
-                    ))}
+                    {!isLoadingCustomers && customers.length === 0 && (
+                      <div className="text-center py-4 text-green-300/60 text-sm">
+                        No customers found
+                      </div>
+                    )}{" "}
+                    {!isLoadingCustomers &&
+                      customers.length > 0 &&
+                      customers.map((customer) => (
+                        <motion.button
+                          key={customer.id}
+                          onClick={() => handleCustomerSelect(customer)}
+                          className={`w-full text-left p-2 rounded-lg transition-all text-sm min-w-0 ${
+                            selectedCustomer?.id === customer.id
+                              ? "bg-green-500/20 border border-green-500/40 text-white"
+                              : "bg-white/5 hover:bg-white/10 text-green-300 border border-transparent"
+                          }`}
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                        >
+                          <div className="font-medium truncate">
+                            {customer.name}
+                          </div>{" "}
+                          <div className="text-xs opacity-80 truncate">
+                            {customer.email}
+                          </div>
+                        </motion.button>
+                      ))}
+                  </div>
+                </motion.div>
+              )}
+            </>
+          ) : (
+            /* Selected Customer Display */
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-green-300 font-medium text-sm">
+                  Selected Customer
+                </span>
+                <AddCustomerDialog onCustomerAdded={handleCustomerAdded} />
+              </div>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="p-3 bg-green-500/20 border border-green-500/40 rounded-lg"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium text-white truncate">
+                      {selectedCustomer.name}
+                    </div>
+                    <div className="text-xs text-green-300/80 truncate">
+                      {selectedCustomer.email}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => clearSelection()}
+                    className="ml-2 p-1 hover:bg-red-500/20 rounded text-red-300 hover:text-red-200 transition-colors"
+                  >
+                    <X size={14} />
+                  </button>
                 </div>
               </motion.div>
+            </div>
+          )}
+        </div>{" "}
+        {/* Vehicle Section */}
+        {selectedCustomer && (
+          <div className="space-y-3">
+            {!selectedCar ? (
+              <>
+                <div className="flex items-center justify-between">
+                  <button
+                    onClick={() => setIsCarListOpen(!isCarListOpen)}
+                    className="flex items-center space-x-2 text-green-300 hover:text-white transition-colors"
+                  >
+                    {isCarListOpen ? (
+                      <ChevronDown size={16} />
+                    ) : (
+                      <ChevronRight size={16} />
+                    )}
+                    <span className="font-medium">Vehicles</span>
+                    <span className="text-xs bg-green-500/20 px-2 py-1 rounded">
+                      {selectedCustomer.cars.length}
+                    </span>
+                  </button>{" "}
+                  <AddVehicleDialog
+                    customerId={selectedCustomer.id}
+                    onVehicleAdded={handleVehicleAdded}
+                  />
+                </div>
+
+                {isCarListOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="space-y-2"
+                  >
+                    {/* Car Search */}
+                    {selectedCustomer.cars.length > 0 && (
+                      <div className="relative">
+                        <Search
+                          size={14}
+                          className="absolute left-3 top-1/2 transform -translate-y-1/2 text-green-300/60"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Search vehicles..."
+                          value={carSearchQuery}
+                          onChange={(e) => setCarSearchQuery(e.target.value)}
+                          className="w-full pl-8 pr-8 py-2 bg-white/10 border border-green-500/20 rounded-lg text-white placeholder-green-300/60 text-sm focus:outline-none focus:border-green-500/40"
+                        />
+                        {carSearchQuery && (
+                          <button
+                            onClick={() => setCarSearchQuery("")}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-green-300/60 hover:text-white"
+                          >
+                            <X size={14} />
+                          </button>
+                        )}
+                      </div>
+                    )}{" "}
+                    {/* Car List */}
+                    <div className="max-h-48 overflow-y-auto overflow-x-hidden space-y-1 scrollbar-thin scrollbar-thumb-green-500/20">
+                      {selectedCustomer.cars.length === 0 && (
+                        <div className="text-center py-4 text-green-300/60 text-sm">
+                          No vehicles available
+                        </div>
+                      )}
+                      {selectedCustomer.cars.length > 0 &&
+                        filteredCars.length === 0 && (
+                          <div className="text-center py-4 text-green-300/60 text-sm">
+                            No vehicles match your search
+                          </div>
+                        )}
+                      {filteredCars.length > 0 &&
+                        filteredCars.map((car) => (
+                          <motion.button
+                            key={car.id}
+                            onClick={() => handleCarSelect(car)}
+                            className={`w-full text-left p-2 rounded-lg transition-all text-sm min-w-0 ${
+                              selectedCar?.id === car.id
+                                ? "bg-green-500/20 border border-green-500/40 text-white"
+                                : "bg-white/5 hover:bg-white/10 text-green-300 border border-transparent"
+                            }`}
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                          >
+                            <div className="font-medium truncate">
+                              {car.year} {car.color_name}
+                            </div>
+                            <div className="text-xs opacity-80 truncate">
+                              {car.code} {car.numbers} • {car.city.name.en}{" "}
+                            </div>
+                          </motion.button>
+                        ))}
+                    </div>
+                  </motion.div>
+                )}
+              </>
+            ) : (
+              /* Selected Car Display */
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-green-300 font-medium text-sm">
+                    Selected Vehicle
+                  </span>
+                  <AddVehicleDialog
+                    customerId={selectedCustomer.id}
+                    onVehicleAdded={handleVehicleAdded}
+                  />
+                </div>
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="p-3 bg-green-500/20 border border-green-500/40 rounded-lg"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium text-white truncate">
+                        {selectedCar.year} {selectedCar.color_name}
+                      </div>
+                      <div className="text-xs text-green-300/80 truncate">
+                        {selectedCar.code} {selectedCar.numbers} •{" "}
+                        {selectedCar.city.name.en}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setSelectedCar(null)}
+                      className="ml-2 p-1 hover:bg-red-500/20 rounded text-red-300 hover:text-red-200 transition-colors"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
             )}
           </div>
         )}
-
         {/* Spacer */}
         <div className="flex-1"></div>
-
         {/* Clear Selection Button - Compact */}
         {(selectedCustomer || selectedCar) && (
           <motion.button
