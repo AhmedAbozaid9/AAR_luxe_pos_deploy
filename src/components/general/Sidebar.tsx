@@ -50,6 +50,7 @@ const Sidebar = () => {
     updateQuantity,
     clearCart,
     syncWithServer,
+    submitOrder,
   } = useCartStore();
   const { addToast } = useToastStore(); // State for checkout
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -366,19 +367,20 @@ const Sidebar = () => {
 
     setIsSubmitting(true);
     try {
-      // For now, we'll just sync with server which updates pricing
-      // TODO: Add actual checkout/order submission endpoint
-      await syncWithServer(selectedCar.id, selectedCustomer.id);
+      // Submit order to the server
+      await submitOrder(selectedCar.id, selectedCustomer.id);
       addToast({
         message: "Order submitted successfully!",
         type: "success",
       });
-      // Clear cart after successful checkout
-      clearCart();
     } catch (error) {
       console.error("Checkout error:", error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "An error occurred during checkout";
       addToast({
-        message: "An error occurred during checkout",
+        message: errorMessage,
         type: "error",
       });
     } finally {

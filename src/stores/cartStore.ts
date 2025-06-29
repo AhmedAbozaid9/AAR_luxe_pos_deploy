@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { submitCartForPricing, type CartItemRequest } from "../api/cart";
+import { submitOrder, type OrderRequest } from "../api/submitOrder";
 
 export interface CartItem {
   purchasable_id: number;
@@ -61,9 +62,9 @@ interface CartStore {
     quantity: number
   ) => void;
   clearCart: () => void;
-
   // Server sync actions
   syncWithServer: (carId: number, userId: number) => Promise<void>;
+  submitOrder: (carId: number, userId: number) => Promise<void>;
 
   // State management
   setLoading: (loading: boolean) => void;
@@ -257,6 +258,58 @@ export const useCartStore = create<CartStore>()((set, get) => ({
     } catch (error) {
       console.error("Error syncing cart with server:", error);
       set({ error: "Failed to sync cart with server" });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  submitOrder: async (carId: number, userId: number) => {
+    const items = get().items;
+    if (items.length === 0) {
+      throw new Error("Cannot submit empty cart");
+    }
+
+    set({ isLoading: true, error: null });
+    try {
+      const orderRequest: OrderRequest = {
+        car_id: carId,
+        user_id: userId,
+        purchasables: items.map((item) => ({
+          purchasable_id: item.purchasable_id,
+          purchasable_type: item.purchasable_type,
+          quantity: item.quantity,
+          option_ids: item.option_ids,
+        })),
+      };
+
+      const response = await submitOrder(orderRequest);
+
+      if (response.success) {
+        // Clear cart after successful order submission
+        set({
+          items: [],
+          totalItems: 0,
+          subtotal: 0,
+          discountAmount: 0,
+          totalPrice: 0,
+          shippingPrice: 0,
+          servicePrice: 0,
+          servicePercentage: 0,
+          minOrderPercentage: 0,
+          isValidCoupon: { value: false, reasons: "" },
+          cartCount: 0,
+          minPaymentPrice: 0,
+        });
+      } else {
+        set({ error: response.message });
+        throw new Error(response.message);
+      }
+    } catch (error) {
+      console.error("Error submitting order:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to submit order";
+      set({ error: errorMessage });
+      throw error;
     } finally {
       set({ isLoading: false });
     }
