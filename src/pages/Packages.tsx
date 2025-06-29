@@ -7,15 +7,18 @@ import { getMinPrice, getPriceForCarGroup } from "../lib/utils";
 import { useCartStore } from "../stores/cartStore";
 import { useCustomerStore } from "../stores/customerStore";
 import { useToastStore } from "../stores/toastStore";
+import { useUserStore } from "../stores/userStore";
 
 const Packages = () => {
   const [packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState(""); // Get selected car from customer store for dynamic pricing
-  const { selectedCar } = useCustomerStore();
-  const { addItem } = useCartStore();
+  const [searchQuery, setSearchQuery] = useState("");
+  // Get selected car from customer store for dynamic pricing
+  const { selectedCar, selectedCustomer } = useCustomerStore();
+  const { addItem, syncWithServer } = useCartStore();
   const { addToast } = useToastStore();
+  const { user } = useUserStore();
 
   useEffect(() => {
     fetchPackages();
@@ -73,8 +76,9 @@ const Packages = () => {
       default:
         return "selected";
     }
-  }; // Function to add package to cart
-  const addToCart = (pkg: Package) => {
+  };
+  // Function to add package to cart
+  const addToCart = async (pkg: Package) => {
     if (!selectedCar) {
       addToast({
         message: "Please select a vehicle before adding packages to cart",
@@ -83,21 +87,46 @@ const Packages = () => {
       return;
     }
 
+    if (!selectedCustomer) {
+      addToast({
+        message: "Please select a customer before adding packages to cart",
+        type: "error",
+      });
+      return;
+    }
+
+    if (!user) {
+      addToast({
+        message: "Please log in to add packages to cart",
+        type: "error",
+      });
+      return;
+    }
     const { price } = getDynamicPrice(pkg);
 
-    addItem({
-      purchasable_id: pkg.id,
-      purchasable_type: "package",
-      quantity: 1,
-      name: pkg.name.en,
-      price: price ?? 0,
-      image: pkg.image?.url,
-    });
+    try {
+      // Add item to local cart
+      addItem({
+        purchasable_id: pkg.id,
+        purchasable_type: "package",
+        quantity: 1,
+        name: pkg.name.en,
+        price: price ?? 0,
+        image: pkg.image?.url,
+      }); // Sync with server to get updated pricing
+      await syncWithServer(selectedCar.id, selectedCustomer.id);
 
-    addToast({
-      message: `${pkg.name.en} package added to cart!`,
-      type: "success",
-    });
+      addToast({
+        message: `${pkg.name.en} package added to cart!`,
+        type: "success",
+      });
+    } catch (error) {
+      console.error("Failed to add package to cart:", error);
+      addToast({
+        message: "Failed to add package to cart",
+        type: "error",
+      });
+    }
   };
 
   if (error) {

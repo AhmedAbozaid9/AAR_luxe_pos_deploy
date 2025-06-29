@@ -11,16 +11,19 @@ import { getMinPrice, getPriceForCarGroup } from "../lib/utils";
 import { useCartStore } from "../stores/cartStore";
 import { useCustomerStore } from "../stores/customerStore";
 import { useToastStore } from "../stores/toastStore";
+import { useUserStore } from "../stores/userStore";
 
 const Services = () => {
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [flippedCards, setFlippedCards] = useState<Set<number>>(new Set()); // Get selected car from customer store for dynamic pricing
-  const { selectedCar } = useCustomerStore();
-  const { addItem } = useCartStore();
+  const [flippedCards, setFlippedCards] = useState<Set<number>>(new Set());
+  // Get selected car from customer store for dynamic pricing
+  const { selectedCar, selectedCustomer } = useCustomerStore();
+  const { addItem, syncWithServer } = useCartStore();
   const { addToast } = useToastStore();
+  const { user } = useUserStore();
 
   useEffect(() => {
     fetchServices();
@@ -84,10 +87,26 @@ const Services = () => {
         return "selected";
     }
   };
-  const addToCart = (option: ServiceOption, service: Service) => {
+  const addToCart = async (option: ServiceOption, service: Service) => {
     if (!selectedCar) {
       addToast({
         message: "Please select a vehicle before adding services to cart",
+        type: "error",
+      });
+      return;
+    }
+
+    if (!selectedCustomer) {
+      addToast({
+        message: "Please select a customer before adding services to cart",
+        type: "error",
+      });
+      return;
+    }
+
+    if (!user) {
+      addToast({
+        message: "Please log in to add services to cart",
         type: "error",
       });
       return;
@@ -105,33 +124,42 @@ const Services = () => {
       return;
     }
 
-    // Find the parent service to include in cart item
-    const optionPrices =
-      option.prices?.map((p) => ({
-        id: p.id,
-        name: `${service.name.en} - ${option.name.en}`,
-        price: p.price,
-      })) ?? [];
+    try {
+      // Find the parent service to include in cart item
+      const optionPrices =
+        option.prices?.map((p) => ({
+          id: p.id,
+          name: `${service.name.en} - ${option.name.en}`,
+          price: p.price,
+        })) ?? [];
 
-    addItem({
-      purchasable_id: service.id,
-      purchasable_type: "service",
-      quantity: 1,
-      option_ids: [option.id],
-      name: service.name.en,
-      price: dynamicPrice,
-      image: service.icon?.url,
-      options: optionPrices.filter((p) =>
-        selectedCar?.car_group_id
-          ? p.id === selectedCar.car_group_id
-          : p.price === dynamicPrice
-      ),
-    });
+      addItem({
+        purchasable_id: service.id,
+        purchasable_type: "service",
+        quantity: 1,
+        option_ids: [option.id],
+        name: service.name.en,
+        price: dynamicPrice,
+        image: service.icon?.url,
+        options: optionPrices.filter((p) =>
+          selectedCar?.car_group_id
+            ? p.id === selectedCar.car_group_id
+            : p.price === dynamicPrice
+        ),
+      }); // Sync with server to get updated pricing
+      await syncWithServer(selectedCar.id, selectedCustomer.id);
 
-    addToast({
-      message: `${option.name.en} added to cart!`,
-      type: "success",
-    });
+      addToast({
+        message: `${option.name.en} added to cart!`,
+        type: "success",
+      });
+    } catch (error) {
+      console.error("Failed to add service to cart:", error);
+      addToast({
+        message: "Failed to add service to cart",
+        type: "error",
+      });
+    }
   };
 
   if (loading) {

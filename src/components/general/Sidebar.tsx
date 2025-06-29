@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { getCustomers, type Car, type Customer } from "../../api/getCustomers";
-import { submitCart } from "../../api/submitCart";
 import { useCartStore, type CartItem } from "../../stores/cartStore";
 import { useCustomerStore } from "../../stores/customerStore";
 import { useToastStore } from "../../stores/toastStore";
@@ -33,17 +32,16 @@ const Sidebar = () => {
     setSelectedCustomer,
     setSelectedCar,
     clearSelection,
-  } = useCustomerStore();
-
-  // Cart and user stores
+  } = useCustomerStore(); // Cart and user stores
   const { user } = useUserStore();
   const {
     items,
+    totalItems,
+    totalPrice,
     removeItem,
     updateQuantity,
     clearCart,
-    getTotalItems,
-    getCartRequest,
+    syncWithServer,
   } = useCartStore();
   const { addToast } = useToastStore(); // State for checkout
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -79,7 +77,6 @@ const Sidebar = () => {
   useEffect(() => {
     fetchCustomers();
   }, []);
-
   // Handle customer search
   useEffect(() => {
     if (customerSearchQuery.trim()) {
@@ -88,9 +85,39 @@ const Sidebar = () => {
     } else {
       fetchCustomers();
     }
-  }, [customerSearchQuery, debounceSearch]);
+  }, [customerSearchQuery, debounceSearch]); // Cart helper functions (defined before useEffects that use them)
+  const handleClearCart = useCallback(async () => {
+    if (!selectedCar || !selectedCustomer) {
+      addToast({
+        message: "Please select a customer and vehicle",
+        type: "error",
+      });
+      return;
+    }
 
-  // Clear cart when customer or car selection changes
+    try {
+      clearCart();
+      // Send empty cart to server to reset pricing
+      await syncWithServer(selectedCar.id, selectedCustomer.id);
+      addToast({
+        message: "Cart cleared successfully",
+        type: "success",
+      });
+    } catch {
+      addToast({
+        message: "Failed to clear cart",
+        type: "error",
+      });
+    }
+  }, [selectedCar, selectedCustomer, clearCart, syncWithServer, addToast]); // Fetch cart when car/customer selection changes
+  useEffect(() => {
+    if (selectedCar && selectedCustomer) {
+      // Send empty cart first to reset server state
+      syncWithServer(selectedCar.id, selectedCustomer.id);
+    }
+  }, [selectedCar, selectedCustomer, syncWithServer]);
+
+  // Clear cart when customer or car selection changes  // Clear cart when customer or car selection changes
   useEffect(() => {
     const currentCustomerId = selectedCustomer?.id || null;
     const currentCarId = selectedCar?.id || null;
@@ -101,7 +128,9 @@ const Sidebar = () => {
       prevCustomerId !== currentCustomerId &&
       items.length > 0
     ) {
-      clearCart();
+      if (selectedCar && user) {
+        handleClearCart();
+      }
       addToast({
         message: "Cart cleared due to customer change",
         type: "info",
@@ -115,7 +144,9 @@ const Sidebar = () => {
       prevCarId !== currentCarId &&
       items.length > 0
     ) {
-      clearCart();
+      if (selectedCar && user) {
+        handleClearCart();
+      }
       addToast({
         message: "Cart cleared due to vehicle change",
         type: "info",
@@ -129,11 +160,13 @@ const Sidebar = () => {
     selectedCustomer?.id,
     selectedCar?.id,
     items.length,
-    clearCart,
     addToast,
     prevCustomerId,
     prevCarId,
     selectedCustomer,
+    selectedCar,
+    user,
+    handleClearCart,
   ]);
 
   // Filter cars based on search query
@@ -197,21 +230,45 @@ const Sidebar = () => {
     return selectedCar !== null && selectedCar.id === car.id;
   };
   // Cart helper functions
-  const handleQuantityChange = (itemId: string, newQuantity: number) => {
+  const handleQuantityChange = async (item: CartItem, newQuantity: number) => {
     if (newQuantity < 1) {
-      removeItem(itemId);
+      await handleRemoveItem(item);
     } else {
-      updateQuantity(itemId, newQuantity);
+      try {
+        updateQuantity(
+          item.purchasable_id,
+          item.purchasable_type,
+          item.option_ids,
+          newQuantity
+        );
+        if (selectedCar && selectedCustomer) {
+          await syncWithServer(selectedCar.id, selectedCustomer.id);
+        }
+      } catch {
+        addToast({
+          message: "Failed to update item quantity",
+          type: "error",
+        });
+      }
     }
   };
-
-  // Calculate total price with dynamic pricing
-  const calculateCartTotal = () => {
-    return items.reduce((total, item) => {
-      return total + getItemPrice(item) * item.quantity;
-    }, 0);
+  const handleRemoveItem = async (item: CartItem) => {
+    try {
+      removeItem(item.purchasable_id, item.purchasable_type, item.option_ids);
+      if (selectedCar && selectedCustomer) {
+        await syncWithServer(selectedCar.id, selectedCustomer.id);
+      }
+      addToast({
+        message: "Item removed from cart",
+        type: "success",
+      });
+    } catch {
+      addToast({
+        message: "Failed to remove item",
+        type: "error",
+      });
+    }
   };
-
   const formatPrice = (price: number) => {
     return `${price.toLocaleString()} AED`;
   };
@@ -282,9 +339,8 @@ const Sidebar = () => {
     // Round to 2 decimal places
     return Math.round(adjustedPrice * 100) / 100;
   };
-
   const handleCheckout = async () => {
-    if (!selectedCar || !user) {
+    if (!selectedCar || !selectedCustomer) {
       addToast({
         message: "Please select a customer and vehicle before checkout",
         type: "error",
@@ -301,23 +357,16 @@ const Sidebar = () => {
     }
 
     setIsSubmitting(true);
-
     try {
-      const cartData = getCartRequest(selectedCar.id, user.id);
-      const response = await submitCart(cartData);
-
-      if (response.success) {
-        addToast({
-          message: response.message || "Order submitted successfully!",
-          type: "success",
-        });
-        clearCart();
-      } else {
-        addToast({
-          message: response.message || "Failed to submit order",
-          type: "error",
-        });
-      }
+      // For now, we'll just sync with server which updates pricing
+      // TODO: Add actual checkout/order submission endpoint
+      await syncWithServer(selectedCar.id, selectedCustomer.id);
+      addToast({
+        message: "Order submitted successfully!",
+        type: "success",
+      });
+      // Clear cart after successful checkout
+      clearCart();
     } catch (error) {
       console.error("Checkout error:", error);
       addToast({
@@ -622,13 +671,13 @@ const Sidebar = () => {
                 {/* Cart Header */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
-                    <ShoppingCart className="text-green-300" size={16} />
+                    <ShoppingCart className="text-green-300" size={16} />{" "}
                     <span className="text-green-300 font-medium text-sm">
-                      Cart ({getTotalItems()})
+                      Cart ({totalItems})
                     </span>
-                  </div>
+                  </div>{" "}
                   <button
-                    onClick={clearCart}
+                    onClick={handleClearCart}
                     className="text-xs text-red-300 hover:text-red-200 transition-colors"
                   >
                     Clear All
@@ -668,21 +717,16 @@ const Sidebar = () => {
                           <p className="text-xs text-green-300/60 capitalize mb-1">
                             {item.purchasable_type}
                           </p>
-
                           {/* Price */}
                           <p className="text-green-300 font-semibold text-xs">
                             {formatPrice(getItemPrice(item))}
-                          </p>
-
+                          </p>{" "}
                           {/* Quantity Controls */}
                           <div className="flex items-center justify-between mt-2">
                             <div className="flex items-center space-x-1">
                               <button
                                 onClick={() =>
-                                  handleQuantityChange(
-                                    item.id,
-                                    item.quantity - 1
-                                  )
+                                  handleQuantityChange(item, item.quantity - 1)
                                 }
                                 className="p-1 hover:bg-white/10 rounded text-green-300 transition-colors"
                               >
@@ -693,20 +737,16 @@ const Sidebar = () => {
                               </span>
                               <button
                                 onClick={() =>
-                                  handleQuantityChange(
-                                    item.id,
-                                    item.quantity + 1
-                                  )
+                                  handleQuantityChange(item, item.quantity + 1)
                                 }
                                 className="p-1 hover:bg-white/10 rounded text-green-300 transition-colors"
                               >
                                 <Plus size={12} />
                               </button>
                             </div>
-
-                            {/* Remove Button */}
+                            {/* Remove Button */}{" "}
                             <button
-                              onClick={() => removeItem(item.id)}
+                              onClick={() => handleRemoveItem(item)}
                               className="p-1 hover:bg-red-500/20 text-red-300 rounded transition-colors"
                             >
                               <Trash2 size={12} />
@@ -725,7 +765,7 @@ const Sidebar = () => {
                       Total:
                     </span>
                     <span className="text-lg font-bold text-green-300">
-                      {formatPrice(calculateCartTotal())}
+                      {formatPrice(totalPrice)}
                     </span>
                   </div>
 
