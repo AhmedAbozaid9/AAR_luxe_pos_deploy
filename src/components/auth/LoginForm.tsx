@@ -68,6 +68,7 @@ const LoginForm = () => {
           transition={{ duration: 0.6, delay: 0.1 }}
           className="relative bg-white/10 backdrop-blur-xl border border-green-500/20 rounded-2xl shadow-2xl p-8"
         >
+          {" "}
           {/* Logo/Title */}
           <motion.div
             initial={{ opacity: 0, y: -10 }}
@@ -75,12 +76,12 @@ const LoginForm = () => {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="text-center mb-8"
           >
+            {" "}
             <h1 className="text-3xl font-bold text-white mb-2">AAR Luxe POS</h1>
             <p className="text-green-300/80">
               Welcome back! Please sign in to continue.
             </p>
           </motion.div>
-
           {/* Error message */}
           {error && (
             <motion.div
@@ -91,7 +92,6 @@ const LoginForm = () => {
               {error}
             </motion.div>
           )}
-
           {/* Login form */}
           <motion.form
             initial={{ opacity: 0 }}
@@ -169,7 +169,6 @@ const LoginForm = () => {
               )}
             </motion.button>
           </motion.form>
-
           {/* Decorative elements */}
           <div className="absolute -top-4 -left-4 w-24 h-24 bg-green-500/20 rounded-full blur-xl"></div>
           <div className="absolute -bottom-4 -right-4 w-32 h-32 bg-emerald-500/20 rounded-full blur-xl"></div>

@@ -32,7 +32,10 @@ axios.interceptors.request.use(
 axios.interceptors.response.use(
   (response: AxiosResponse): AxiosResponse => response,
   (error: AxiosError): Promise<AxiosError> => {
-    if (error.response?.status === 401) {
+    if (
+      error.response?.status === 401 &&
+      window.location.pathname !== "/login"
+    ) {
       // Handle unauthorized access
       Cookies.remove("aar_luxe_token");
       localStorage.removeItem("aar_luxe_token");
