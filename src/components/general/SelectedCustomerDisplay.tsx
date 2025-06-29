@@ -10,6 +10,20 @@ const SelectedCustomerDisplay = ({
 }: SelectedCustomerDisplayProps) => {
   const { selectedCustomer, selectedCar } = useCustomerStore();
 
+  // Get car size name based on car group ID
+  const getCarSizeName = (carGroupId: number): string => {
+    switch (carGroupId) {
+      case 1:
+        return "Small";
+      case 2:
+        return "Medium";
+      case 3:
+        return "Large";
+      default:
+        return "Unknown";
+    }
+  };
+
   if (!selectedCustomer) {
     return null;
   }
@@ -65,11 +79,17 @@ const SelectedCustomerDisplay = ({
                 <span className="font-medium text-gray-800">
                   {selectedCar.year}
                 </span>
-              </div>
+              </div>{" "}
               <div className="flex justify-between">
                 <span className="text-gray-600">Color:</span>
                 <span className="font-medium text-gray-800">
                   {selectedCar.color_name}
+                </span>
+              </div>{" "}
+              <div className="flex justify-between">
+                <span className="text-gray-600">Size:</span>
+                <span className="font-medium text-green-600">
+                  {getCarSizeName(selectedCar.car_group_id)} car
                 </span>
               </div>
             </div>

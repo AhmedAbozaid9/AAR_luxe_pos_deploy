@@ -7,6 +7,8 @@ import {
   type ServiceOption,
 } from "../api/getServices";
 import ServiceHeader from "../components/general/ServiceHeader";
+import { getMinPrice, getPriceForCarGroup } from "../lib/utils";
+import { useCustomerStore } from "../stores/customerStore";
 
 const Services = () => {
   const [services, setServices] = useState<Service[]>([]);
@@ -14,6 +16,9 @@ const Services = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [flippedCards, setFlippedCards] = useState<Set<number>>(new Set());
+
+  // Get selected car from customer store for dynamic pricing
+  const { selectedCar } = useCustomerStore();
 
   useEffect(() => {
     fetchServices();
@@ -38,7 +43,6 @@ const Services = () => {
       setLoading(false);
     }
   };
-
   const toggleCardFlip = (serviceId: number) => {
     setFlippedCards((prev) => {
       const newSet = new Set(prev);
@@ -50,6 +54,35 @@ const Services = () => {
       return newSet;
     });
   };
+  // Get dynamic price for service option based on selected car
+  const getOptionPrice = (option: ServiceOption): number | null => {
+    if (!option.prices || option.prices.length === 0) {
+      return null;
+    }
+
+    // If a car is selected, get price for that car group
+    if (selectedCar?.car_group_id) {
+      return getPriceForCarGroup(option.prices, selectedCar.car_group_id);
+    }
+
+    // Otherwise, show minimum price as fallback
+    return getMinPrice(option.prices);
+  };
+
+  // Get car size name based on car group ID
+  const getCarSizeName = (carGroupId: number): string => {
+    switch (carGroupId) {
+      case 1:
+        return "Small";
+      case 2:
+        return "Medium";
+      case 3:
+        return "Large";
+      default:
+        return "selected";
+    }
+  };
+
   const addToCart = (option: ServiceOption) => {
     // Implementation will be added based on cart system requirements
     console.log("Adding to cart:", option.name.en, "ID:", option.id);
@@ -92,9 +125,7 @@ const Services = () => {
 
   return (
     <div className="h-full">
-      <ServiceHeader title="Services" />
-
-      {/* Search Bar */}
+      <ServiceHeader title="Services" /> {/* Search Bar */}
       <div className="mb-8">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -114,8 +145,22 @@ const Services = () => {
             className="w-full pl-12 pr-6 py-4 text-lg bg-white border border-gray-200 rounded-2xl focus:ring-2 focus:ring-green-500 focus:border-transparent shadow-sm hover:shadow-md transition-all duration-300 placeholder-gray-400"
           />
         </motion.div>
-      </div>
 
+        {/* Pricing info banner */}
+        {!selectedCar && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+            className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-xl text-center"
+          >
+            <p className="text-sm text-blue-700">
+              💡 Select a customer and vehicle to see personalized pricing for
+              your car size
+            </p>
+          </motion.div>
+        )}
+      </div>
       {services.length === 0 && !loading ? (
         <div className="text-center py-12">
           <div className="text-6xl mb-4 text-center">🔧</div>
@@ -320,13 +365,27 @@ const Services = () => {
                                 )}
                               </div>{" "}
                               {/* Price Display */}
-                              {option.prices && option.prices.length > 0 && (
-                                <div className="mb-3">
-                                  <p className="text-green-600 font-bold text-sm">
-                                    ${option.prices[0].price}
-                                  </p>
-                                </div>
-                              )}
+                              {(() => {
+                                const dynamicPrice = getOptionPrice(option);
+                                return (
+                                  <div className="mb-3">
+                                    <p className="text-green-600 font-bold text-sm">
+                                      {dynamicPrice !== null
+                                        ? `$${dynamicPrice.toLocaleString()}`
+                                        : "Price on request"}
+                                      {selectedCar && dynamicPrice !== null && (
+                                        <span className="text-xs text-gray-500 block">
+                                          For your{" "}
+                                          {getCarSizeName(
+                                            selectedCar.car_group_id
+                                          )}{" "}
+                                          car
+                                        </span>
+                                      )}
+                                    </p>
+                                  </div>
+                                );
+                              })()}
                               {/* Add to Cart Button */}
                               <motion.button
                                 whileHover={{ scale: 1.02 }}

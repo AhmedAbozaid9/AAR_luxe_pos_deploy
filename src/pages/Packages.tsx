@@ -3,12 +3,17 @@ import { Clock, Search, Star } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getPackages, type Package } from "../api/getPackages";
 import ServiceHeader from "../components/general/ServiceHeader";
+import { getMinPrice, getPriceForCarGroup } from "../lib/utils";
+import { useCustomerStore } from "../stores/customerStore";
 
 const Packages = () => {
   const [packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Get selected car from customer store for dynamic pricing
+  const { selectedCar } = useCustomerStore();
 
   useEffect(() => {
     fetchPackages();
@@ -34,11 +39,39 @@ const Packages = () => {
       setLoading(false);
     }
   };
-  const getPriceDisplay = (pkg: Package) => {
-    if (pkg.prices_min_price === null || pkg.prices_min_price === undefined) {
-      return { price: null, text: "Price on request" };
+  const getDynamicPrice = (
+    pkg: Package
+  ): { price: number | null; showCarInfo: boolean } => {
+    if (!pkg.prices || pkg.prices.length === 0) {
+      return { price: null, showCarInfo: false };
     }
-    return { price: pkg.prices_min_price.toLocaleString(), text: null };
+
+    // If a car is selected, get price for that car group
+    if (selectedCar?.car_group_id) {
+      const dynamicPrice = getPriceForCarGroup(
+        pkg.prices,
+        selectedCar.car_group_id
+      );
+      return { price: dynamicPrice, showCarInfo: true };
+    }
+
+    // Otherwise, show minimum price as fallback
+    const minPrice = getMinPrice(pkg.prices);
+    return { price: minPrice, showCarInfo: false };
+  };
+
+  // Get car size name based on car group ID
+  const getCarSizeName = (carGroupId: number): string => {
+    switch (carGroupId) {
+      case 1:
+        return "Small";
+      case 2:
+        return "Medium";
+      case 3:
+        return "Large";
+      default:
+        return "selected";
+    }
   };
 
   if (error) {
@@ -74,6 +107,21 @@ const Packages = () => {
             className="w-full pl-12 pr-6 py-4 text-lg bg-white border border-gray-200 rounded-2xl focus:ring-2 focus:ring-green-500 focus:border-transparent shadow-sm hover:shadow-md transition-all duration-300 placeholder-gray-400"
           />
         </motion.div>
+
+        {/* Pricing info banner */}
+        {!selectedCar && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+            className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-xl text-center"
+          >
+            <p className="text-sm text-blue-700">
+              💡 Select a customer and vehicle to see personalized pricing for
+              your car size
+            </p>
+          </motion.div>
+        )}
       </div>{" "}
       {loading ? (
         <div className="flex items-center justify-center h-64">
@@ -180,15 +228,23 @@ const Packages = () => {
                 <div className="flex items-center justify-between mt-auto pt-4">
                   <div className="text-2xl font-bold text-green-600">
                     {(() => {
-                      const priceInfo = getPriceDisplay(pkg);
-                      if (priceInfo.text) {
-                        return priceInfo.text;
+                      const { price, showCarInfo } = getDynamicPrice(pkg);
+                      if (price === null) {
+                        return "Price on request";
                       }
                       return (
-                        <>
-                          {priceInfo.price}
-                          <sub className="text-sm font-normal ml-1">AED</sub>
-                        </>
+                        <div>
+                          <span>
+                            {price.toLocaleString()}
+                            <sub className="text-sm font-normal ml-1">AED</sub>
+                          </span>
+                          {showCarInfo && selectedCar && (
+                            <div className="text-xs text-gray-500 font-normal mt-1">
+                              For your{" "}
+                              {getCarSizeName(selectedCar.car_group_id)} car
+                            </div>
+                          )}
+                        </div>
                       );
                     })()}
                   </div>
