@@ -38,6 +38,14 @@ const Sidebar = () => {
     items,
     totalItems,
     totalPrice,
+    subtotal,
+    discountAmount,
+    shippingPrice,
+    servicePrice,
+    servicePercentage,
+    isValidCoupon,
+    cartCount,
+    minPaymentPrice,
     removeItem,
     updateQuantity,
     clearCart,
@@ -683,7 +691,6 @@ const Sidebar = () => {
                     Clear All
                   </button>
                 </div>
-
                 {/* Cart Items */}
                 <div className="space-y-3 max-h-64 overflow-y-auto">
                   {items.map((item) => (
@@ -756,34 +763,122 @@ const Sidebar = () => {
                       </div>
                     </motion.div>
                   ))}
-                </div>
+                </div>{" "}
+                {/* Cart Summary and Pricing Breakdown */}
+                <div className="pt-4 border-t border-green-500/20 space-y-4">
+                  {/* Subtotal and Itemized Costs */}
+                  <div className="space-y-2">
+                    {/* Subtotal */}
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-300">
+                        Subtotal ({cartCount} items)
+                      </span>
+                      <span className="text-white font-medium">
+                        {formatPrice(subtotal)}
+                      </span>
+                    </div>
 
-                {/* Cart Total and Checkout */}
-                <div className="pt-3 border-t border-green-500/20">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm font-medium text-white">
-                      Total:
-                    </span>
-                    <span className="text-lg font-bold text-green-300">
-                      {formatPrice(totalPrice)}
-                    </span>
+                    {/* Service Fee */}
+                    {servicePrice > 0 && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-300">
+                          Service Fee ({(servicePercentage * 100).toFixed(1)}%)
+                        </span>
+                        <span className="text-white font-medium">
+                          {formatPrice(servicePrice)}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Shipping */}
+                    {shippingPrice > 0 && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-300">Shipping</span>
+                        <span className="text-white font-medium">
+                          {formatPrice(shippingPrice)}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Discount */}
+                    {discountAmount > 0 && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-green-400">Discount</span>
+                        <span className="text-green-400 font-medium">
+                          -{formatPrice(discountAmount)}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
+                  {/* Coupon Status */}
+                  {!isValidCoupon.value && isValidCoupon.reasons && (
+                    <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-2">
+                      <p className="text-xs text-red-300">
+                        {isValidCoupon.reasons}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Total */}
+                  <div className="pt-2 border-t border-green-500/10">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-base font-semibold text-white">
+                        Total:
+                      </span>
+                      <span className="text-xl font-bold text-green-300">
+                        {formatPrice(totalPrice)}
+                      </span>
+                    </div>
+
+                    {/* Minimum Payment Notice */}
+                    {minPaymentPrice > 0 && minPaymentPrice !== totalPrice && (
+                      <p className="text-xs text-gray-400">
+                        Minimum payment: {formatPrice(minPaymentPrice)}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Checkout Button */}
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={handleCheckout}
                     disabled={
-                      isSubmitting || items.length === 0 || !selectedCar
+                      isSubmitting ||
+                      items.length === 0 ||
+                      !selectedCar ||
+                      !selectedCustomer
                     }
-                    className={`w-full py-2 rounded-lg font-medium text-sm transition-colors ${
-                      isSubmitting || items.length === 0 || !selectedCar
-                        ? "bg-gray-600 text-gray-400 cursor-not-allowed"
-                        : "bg-green-600 hover:bg-green-700 text-white"
+                    className={`w-full py-3 rounded-lg font-semibold text-sm transition-all duration-200 ${
+                      isSubmitting ||
+                      items.length === 0 ||
+                      !selectedCar ||
+                      !selectedCustomer
+                        ? "bg-gray-600/50 text-gray-400 cursor-not-allowed"
+                        : "bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-lg hover:shadow-green-500/25"
                     }`}
                   >
-                    {isSubmitting ? "Processing..." : "Checkout"}
+                    {isSubmitting ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        <span>Processing...</span>
+                      </div>
+                    ) : (
+                      `Checkout • ${formatPrice(totalPrice)}`
+                    )}
                   </motion.button>
+                  {/* Clear Cart Button */}
+                  {items.length > 0 && (
+                    <motion.button
+                      whileHover={{ scale: 1.01 }}
+                      whileTap={{ scale: 0.99 }}
+                      onClick={handleClearCart}
+                      className="w-full py-2 rounded-lg font-medium text-xs bg-red-500/10 hover:bg-red-500/20 text-red-300 hover:text-red-200 border border-red-500/20 hover:border-red-500/30 transition-all duration-200"
+                    >
+                      Clear All Items
+                    </motion.button>
+                  )}
                 </div>
               </motion.div>
             )}

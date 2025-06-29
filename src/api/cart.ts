@@ -37,16 +37,74 @@ export interface CartResponse {
   success: boolean;
   message: string;
   cart: {
-    id: string;
-    car_id: number;
-    user_id: number;
-    items: CartItemResponse[];
-    total_items: number;
-    subtotal: number;
-    discount_amount: number;
+    services: Array<{
+      cart: {
+        purchasable_id: number;
+        purchasable_type: "service";
+        quantity: number;
+        purchasable: {
+          id: number;
+          business_id: number;
+          name: { ar: string; en: string };
+          price: number;
+          before_discount_price: number;
+          is_active: number;
+          order_column: number;
+          category_id: number;
+          duration: number;
+          created_at: string;
+          updated_at: string;
+          description: string;
+          is_favourite: boolean | null;
+        };
+      };
+      payload: {
+        status: string;
+        conflicts: unknown[];
+        price: number;
+      };
+    }>;
+    products: Array<{
+      cart: {
+        purchasable_id: number;
+        purchasable_type: "product";
+        quantity: number;
+        purchasable: {
+          id: number;
+          business_id: number;
+          name: { ar: string; en: string };
+          price: number;
+          before_discount_price: number;
+          is_active: number;
+          order_column: number;
+          category_id: number;
+          duration: number;
+          created_at: string;
+          updated_at: string;
+          description: string;
+          is_favourite: boolean | null;
+        };
+      };
+      payload: {
+        status: string;
+        conflicts: unknown[];
+        price: number;
+      };
+    }>;
+    shipping_price: number;
+    subtotal_price: number;
+    service_percentage: number;
+    min_order_percentage: number;
+    service_price: number;
+    is_valid_coupon: {
+      value: boolean;
+      reasons: string;
+    };
+    discount_price: number;
     total_price: number;
-    created_at: string;
-    updated_at: string;
+    quantity: number;
+    count: number;
+    min_payment_price: number;
   };
 }
 
