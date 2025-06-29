@@ -67,7 +67,6 @@ const Sidebar = () => {
         .toLowerCase()
         .includes(carSearchQuery.toLowerCase())
     ) || [];
-
   const handleCustomerSelect = (customer: Customer) => {
     if (selectedCustomer?.id === customer.id) {
       // If clicking the same customer, deselect it
@@ -78,7 +77,6 @@ const Sidebar = () => {
       setIsCarListOpen(true); // Open car list when customer is selected
     }
   };
-
   const handleCarSelect = (car: Car) => {
     if (selectedCar?.id === car.id) {
       // If clicking the same car, deselect it
@@ -113,6 +111,15 @@ const Sidebar = () => {
       );
       setSelectedCar(newVehicle);
     }
+  };
+
+  // Helper functions to handle type-safe comparisons
+  const isCustomerSelected = (customer: Customer): boolean => {
+    return selectedCustomer !== null && selectedCustomer.id === customer.id;
+  };
+
+  const isCarSelected = (car: Car): boolean => {
+    return selectedCar !== null && selectedCar.id === car.id;
   };
 
   return (
@@ -212,7 +219,7 @@ const Sidebar = () => {
                           key={customer.id}
                           onClick={() => handleCustomerSelect(customer)}
                           className={`w-full text-left p-2 rounded-lg transition-all text-sm min-w-0 ${
-                            selectedCustomer?.id === customer.id
+                            isCustomerSelected(customer)
                               ? "bg-green-500/20 border border-green-500/40 text-white"
                               : "bg-white/5 hover:bg-white/10 text-green-300 border border-transparent"
                           }`}
@@ -341,7 +348,7 @@ const Sidebar = () => {
                             key={car.id}
                             onClick={() => handleCarSelect(car)}
                             className={`w-full text-left p-2 rounded-lg transition-all text-sm min-w-0 ${
-                              selectedCar?.id === car.id
+                              isCarSelected(car)
                                 ? "bg-green-500/20 border border-green-500/40 text-white"
                                 : "bg-white/5 hover:bg-white/10 text-green-300 border border-transparent"
                             }`}

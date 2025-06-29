@@ -11,7 +11,7 @@ const Layout = () => {
       {" "}
       {/* Sidebar */}
       <motion.div
-        className="w-80 bg-gradient-to-b from-slate-900 via-gray-900 to-black text-white shadow-2xl border-r border-green-500/20"
+        className="w-90 bg-gradient-to-b from-slate-900 via-gray-900 to-black text-white shadow-2xl border-r border-green-500/20"
         initial={{ x: -100, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
