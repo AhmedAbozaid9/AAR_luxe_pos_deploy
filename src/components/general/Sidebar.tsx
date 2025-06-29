@@ -48,6 +48,10 @@ const Sidebar = () => {
   const { addToast } = useToastStore(); // State for checkout
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Store previous customer and car IDs to detect changes
+  const [prevCustomerId, setPrevCustomerId] = useState<number | null>(null);
+  const [prevCarId, setPrevCarId] = useState<number | null>(null);
+
   // Debounced search for customers
   const debounceSearch = useCallback((searchQuery: string) => {
     const timeoutId = setTimeout(() => {
@@ -85,6 +89,53 @@ const Sidebar = () => {
       fetchCustomers();
     }
   }, [customerSearchQuery, debounceSearch]);
+
+  // Clear cart when customer or car selection changes
+  useEffect(() => {
+    const currentCustomerId = selectedCustomer?.id || null;
+    const currentCarId = selectedCar?.id || null;
+
+    // Check if customer changed
+    if (
+      prevCustomerId !== null &&
+      prevCustomerId !== currentCustomerId &&
+      items.length > 0
+    ) {
+      clearCart();
+      addToast({
+        message: "Cart cleared due to customer change",
+        type: "info",
+      });
+    }
+
+    // Check if car changed (only if we have a customer selected)
+    if (
+      selectedCustomer &&
+      prevCarId !== null &&
+      prevCarId !== currentCarId &&
+      items.length > 0
+    ) {
+      clearCart();
+      addToast({
+        message: "Cart cleared due to vehicle change",
+        type: "info",
+      });
+    }
+
+    // Update previous IDs
+    setPrevCustomerId(currentCustomerId);
+    setPrevCarId(currentCarId);
+  }, [
+    selectedCustomer?.id,
+    selectedCar?.id,
+    items.length,
+    clearCart,
+    addToast,
+    prevCustomerId,
+    prevCarId,
+    selectedCustomer,
+  ]);
+
   // Filter cars based on search query
   const filteredCars =
     selectedCustomer?.cars.filter((car) =>

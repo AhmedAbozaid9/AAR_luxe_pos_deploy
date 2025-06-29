@@ -73,9 +73,16 @@ const Packages = () => {
       default:
         return "selected";
     }
-  };
-  // Function to add package to cart
+  }; // Function to add package to cart
   const addToCart = (pkg: Package) => {
+    if (!selectedCar) {
+      addToast({
+        message: "Please select a vehicle before adding packages to cart",
+        type: "error",
+      });
+      return;
+    }
+
     const { price } = getDynamicPrice(pkg);
 
     addItem({
@@ -268,12 +275,17 @@ const Packages = () => {
                     })()}
                   </div>{" "}
                   <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
+                    whileHover={{ scale: selectedCar ? 1.05 : 1 }}
+                    whileTap={{ scale: selectedCar ? 0.95 : 1 }}
                     onClick={() => addToCart(pkg)}
-                    className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors duration-200 text-sm font-medium"
+                    disabled={!selectedCar}
+                    className={`px-4 py-2 rounded-lg transition-colors duration-200 text-sm font-medium ${
+                      selectedCar
+                        ? "bg-green-500 hover:bg-green-600 text-white cursor-pointer"
+                        : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    }`}
                   >
-                    Select Package
+                    {selectedCar ? "Select Package" : "Select Vehicle First"}
                   </motion.button>
                 </div>
               </div>

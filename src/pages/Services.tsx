@@ -85,6 +85,14 @@ const Services = () => {
     }
   };
   const addToCart = (option: ServiceOption, service: Service) => {
+    if (!selectedCar) {
+      addToast({
+        message: "Please select a vehicle before adding services to cart",
+        type: "error",
+      });
+      return;
+    }
+
     const dynamicPrice = getOptionPrice(option);
 
     if (dynamicPrice === null) {
@@ -422,16 +430,25 @@ const Services = () => {
                                     </p>
                                   </div>
                                 );
-                              })()}
+                              })()}{" "}
                               {/* Add to Cart Button */}{" "}
                               <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
+                                whileHover={{ scale: selectedCar ? 1.02 : 1 }}
+                                whileTap={{ scale: selectedCar ? 0.98 : 1 }}
                                 onClick={() => addToCart(option, service)}
-                                className="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg text-xs font-semibold transition-colors duration-200 flex items-center justify-center space-x-2"
+                                disabled={!selectedCar}
+                                className={`w-full py-2 px-4 rounded-lg text-xs font-semibold transition-colors duration-200 flex items-center justify-center space-x-2 ${
+                                  selectedCar
+                                    ? "bg-green-600 hover:bg-green-700 text-white cursor-pointer"
+                                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                }`}
                               >
                                 <ShoppingCart size={14} />
-                                <span>Add to Cart</span>
+                                <span>
+                                  {selectedCar
+                                    ? "Add to Cart"
+                                    : "Select Vehicle First"}
+                                </span>
                               </motion.button>
                             </div>
                           ))

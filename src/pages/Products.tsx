@@ -4,15 +4,19 @@ import { useEffect, useState } from "react";
 import { getProducts, type Product } from "../api/getProducts";
 import ServiceHeader from "../components/general/ServiceHeader";
 import { useCartStore } from "../stores/cartStore";
+import { useCustomerStore } from "../stores/customerStore";
 import { useToastStore } from "../stores/toastStore";
 
 const Products = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState(""); // Cart and customer stores
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Cart and customer stores
   const { addItem } = useCartStore();
   const { addToast } = useToastStore();
+  const { selectedCar } = useCustomerStore();
 
   useEffect(() => {
     fetchProducts();
@@ -53,9 +57,16 @@ const Products = () => {
           )
         : 0,
     };
-  };
-  // Function to add product to cart
+  }; // Function to add product to cart
   const addToCart = (product: Product) => {
+    if (!selectedCar) {
+      addToast({
+        message: "Please select a vehicle before adding products to cart",
+        type: "error",
+      });
+      return;
+    }
+
     addItem({
       purchasable_id: product.id,
       purchasable_type: "product",
@@ -250,12 +261,17 @@ const Products = () => {
                       )}
                     </div>{" "}
                     <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
+                      whileHover={{ scale: selectedCar ? 1.05 : 1 }}
+                      whileTap={{ scale: selectedCar ? 0.95 : 1 }}
                       onClick={() => addToCart(product)}
-                      className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl transition-colors duration-200 text-sm font-semibold shadow-sm hover:shadow-md"
+                      disabled={!selectedCar}
+                      className={`px-6 py-3 rounded-xl transition-colors duration-200 text-sm font-semibold shadow-sm hover:shadow-md ${
+                        selectedCar
+                          ? "bg-green-500 hover:bg-green-600 text-white cursor-pointer"
+                          : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                      }`}
                     >
-                      Add to Cart
+                      {selectedCar ? "Add to Cart" : "Select Vehicle First"}
                     </motion.button>
                   </div>
                 </div>
