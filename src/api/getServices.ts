@@ -69,9 +69,12 @@ export interface ServicesResponse {
   // Add other pagination fields as needed
 }
 
-export const getServices = async (): Promise<ServicesResponse> => {
+export const getServices = async (
+  search?: string
+): Promise<ServicesResponse> => {
   try {
-    const response = await axios.get<ServicesResponse>("/services");
+    const params = search ? { search } : {};
+    const response = await axios.get<ServicesResponse>("/services", { params });
     return response.data;
   } catch (error) {
     console.error("Error fetching services:", error);

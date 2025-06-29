@@ -1,14 +1,8 @@
 import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { ChevronDown, ChevronRight, Search, X } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { getCustomers, type Car, type Customer } from "../../api/getCustomers";
 import { useCustomerStore } from "../../stores/customerStore";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
 import { AddCustomerDialog } from "./AddCustomerDialog";
 import { AddVehicleDialog } from "./AddVehicleDialog";
 
@@ -16,61 +10,74 @@ const Sidebar = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoadingCustomers, setIsLoadingCustomers] = useState(false);
   const [error, setError] = useState<string>("");
-  const { selectedCustomer, selectedCar, setSelectedCustomer, setSelectedCar } =
-    useCustomerStore();
+  const [customerSearchQuery, setCustomerSearchQuery] = useState("");
+  const [carSearchQuery, setCarSearchQuery] = useState("");
+  const [isCustomerListOpen, setIsCustomerListOpen] = useState(true);
+  const [isCarListOpen, setIsCarListOpen] = useState(true);
 
-  // Helper function for car select placeholder
-  const getCarSelectPlaceholder = () => {
-    if (!selectedCustomer) {
-      return "Select a customer first";
+  const {
+    selectedCustomer,
+    selectedCar,
+    setSelectedCustomer,
+    setSelectedCar,
+    clearSelection,
+  } = useCustomerStore();
+
+  // Debounced search for customers
+  const debounceSearch = useCallback((searchQuery: string) => {
+    const timeoutId = setTimeout(() => {
+      fetchCustomers(searchQuery);
+    }, 300);
+    return () => clearTimeout(timeoutId);
+  }, []);
+
+  // Fetch customers function with optional search
+  const fetchCustomers = async (searchQuery?: string) => {
+    setIsLoadingCustomers(true);
+    setError("");
+    try {
+      const response = await getCustomers(searchQuery);
+      setCustomers(response.data);
+    } catch (err) {
+      setError("Failed to load customers");
+      console.error("Error fetching customers:", err);
+    } finally {
+      setIsLoadingCustomers(false);
     }
-    if (selectedCustomer.cars.length === 0) {
-      return "No vehicles available";
-    }
-    return "Select a vehicle";
   };
 
-  // Fetch customers on component mount
+  // Initial fetch on component mount
   useEffect(() => {
-    const fetchCustomers = async () => {
-      setIsLoadingCustomers(true);
-      setError("");
-      try {
-        const response = await getCustomers();
-        setCustomers(response.data);
-      } catch (err) {
-        setError("Failed to load customers");
-        console.error("Error fetching customers:", err);
-      } finally {
-        setIsLoadingCustomers(false);
-      }
-    };
-
     fetchCustomers();
   }, []);
 
-  const handleCustomerChange = (customerId: string) => {
-    if (customerId === "") {
-      setSelectedCustomer(null);
-      return;
+  // Handle customer search
+  useEffect(() => {
+    if (customerSearchQuery.trim()) {
+      const cleanup = debounceSearch(customerSearchQuery);
+      return cleanup;
+    } else {
+      fetchCustomers();
     }
+  }, [customerSearchQuery, debounceSearch]);
 
-    const customer = customers.find((c) => c.id === parseInt(customerId));
-    if (customer) {
-      setSelectedCustomer(customer);
-    }
-  };
-  const handleCarChange = (carId: string) => {
-    if (carId === "" || !selectedCustomer) {
-      setSelectedCar(null);
-      return;
-    }
+  // Filter cars based on search query
+  const filteredCars =
+    selectedCustomer?.cars.filter((car) =>
+      `${car.year} ${car.color_name} ${car.code} ${car.numbers} ${car.city.name.en}`
+        .toLowerCase()
+        .includes(carSearchQuery.toLowerCase())
+    ) || [];
 
-    const car = selectedCustomer.cars.find((c) => c.id === parseInt(carId));
-    if (car) {
-      setSelectedCar(car);
-    }
+  const handleCustomerSelect = (customer: Customer) => {
+    setSelectedCustomer(customer);
+    setIsCarListOpen(true); // Open car list when customer is selected
   };
+
+  const handleCarSelect = (car: Car) => {
+    setSelectedCar(car);
+  };
+
   const handleCustomerAdded = (newCustomer: Customer) => {
     console.log("Adding new customer:", newCustomer);
     if (newCustomer?.id) {
@@ -98,12 +105,12 @@ const Sidebar = () => {
   };
 
   return (
-    <div className="h-full  bg-white/5 backdrop-blur-xl border-r border-green-500/20 p-6">
+    <div className="h-full bg-white/5 backdrop-blur-xl border-r border-green-500/20 p-6">
       <motion.div
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.6 }}
-        className="space-y-6"
+        className="space-y-6 h-full flex flex-col"
       >
         {/* Header */}
         <div className="text-center">
@@ -114,6 +121,7 @@ const Sidebar = () => {
             Choose a customer and their vehicle
           </p>
         </div>
+
         {/* Error message */}
         {error && (
           <motion.div
@@ -124,155 +132,200 @@ const Sidebar = () => {
             {error}
           </motion.div>
         )}
-        {/* Customer Select */}
-        <div className="space-y-2">
-          <div className="text-sm font-medium text-green-300">Customer</div>
-          <div className="flex items-center space-x-2">
-            <Select
-              value={selectedCustomer?.id.toString() ?? ""}
-              onValueChange={handleCustomerChange}
-              disabled={isLoadingCustomers}
+
+        {/* Customer Section */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => setIsCustomerListOpen(!isCustomerListOpen)}
+              className="flex items-center space-x-2 text-green-300 hover:text-white transition-colors"
             >
-              <motion.div
-                whileFocus={{ scale: 1.02 }}
-                transition={{ duration: 0.2 }}
-                className="flex-1"
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue
-                    placeholder={
-                      isLoadingCustomers
-                        ? "Loading customers..."
-                        : "Select a customer"
-                    }
-                  />{" "}
-                </SelectTrigger>
-              </motion.div>
-              <SelectContent>
-                {customers.map((customer) => (
-                  <SelectItem key={customer.id} value={customer.id.toString()}>
-                    {customer.name}{" "}
-                    {customer.email ? `(${customer.email})` : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              {isCustomerListOpen ? (
+                <ChevronDown size={16} />
+              ) : (
+                <ChevronRight size={16} />
+              )}
+              <span className="font-medium">Customers</span>
+              <span className="text-xs bg-green-500/20 px-2 py-1 rounded">
+                {customers.length}
+              </span>
+            </button>{" "}
             <AddCustomerDialog onCustomerAdded={handleCustomerAdded} />
           </div>
-        </div>{" "}
-        {/* Car Select */}
-        <div className="space-y-2">
-          <div className="text-sm font-medium text-green-300">Vehicle</div>
-          <div className="flex items-center space-x-2">
-            <Select
-              value={selectedCar?.id.toString() ?? ""}
-              onValueChange={handleCarChange}
-              disabled={!selectedCustomer || selectedCustomer.cars.length === 0}
+
+          {isCustomerListOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="space-y-2"
             >
-              <motion.div
-                whileFocus={{ scale: 1.02 }}
-                transition={{ duration: 0.2 }}
-                className="flex-1"
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder={getCarSelectPlaceholder()} />
-                </SelectTrigger>
-              </motion.div>
-              <SelectContent>
-                {selectedCustomer?.cars.map((car) => (
-                  <SelectItem key={car.id} value={car.id.toString()}>
-                    {car.year} {car.color_name} - {car.code} {car.numbers} (
-                    {car.city.name.en})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <AddVehicleDialog
-              customerId={selectedCustomer?.id ?? 0}
-              onVehicleAdded={handleVehicleAdded}
-              disabled={!selectedCustomer}
-            />
-          </div>
-        </div>
-        {/* Selected Info Display */}
-        {selectedCustomer && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg space-y-3"
-          >
-            <h3 className="text-white font-semibold text-sm">
-              Selected Customer
-            </h3>
-            <div className="space-y-1 text-sm">
-              <p className="text-green-300">
-                <span className="text-green-200">Name:</span>{" "}
-                {selectedCustomer.name}
-              </p>
-              <p className="text-green-300">
-                <span className="text-green-200">Email:</span>{" "}
-                {selectedCustomer.email}
-              </p>
-              <p className="text-green-300">
-                <span className="text-green-200">Phone:</span>{" "}
-                {selectedCustomer.phone_national}
-              </p>
-            </div>
-
-            {selectedCar && (
-              <div className="pt-3 border-t border-green-500/20">
-                <h4 className="text-white font-semibold text-sm mb-2">
-                  Selected Vehicle
-                </h4>
-                <div className="space-y-1 text-sm">
-                  <p className="text-green-300">
-                    <span className="text-green-200">Year:</span>{" "}
-                    {selectedCar.year}
-                  </p>
-                  <p className="text-green-300">
-                    <span className="text-green-200">Color:</span>{" "}
-                    {selectedCar.color_name}
-                  </p>
-                  <p className="text-green-300">
-                    <span className="text-green-200">Plate:</span>{" "}
-                    {selectedCar.code} {selectedCar.numbers}
-                  </p>
-                  <p className="text-green-300">
-                    <span className="text-green-200">City:</span>{" "}
-                    {selectedCar.city.name.en}
-                  </p>
-                  <p className="text-green-300">
-                    <span className="text-green-200">Type:</span>{" "}
-                    {selectedCar.plate_type.name.en}
-                  </p>
-                </div>
-
-                {/* Plate Image */}
-                {selectedCar.plate_img && (
-                  <div className="mt-3">
-                    <img
-                      src={selectedCar.plate_img}
-                      alt="Vehicle Plate"
-                      className="w-full max-w-[200px] rounded border border-green-500/30"
-                    />
-                  </div>
+              {/* Customer Search */}
+              <div className="relative">
+                <Search
+                  size={14}
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-green-300/60"
+                />
+                <input
+                  type="text"
+                  placeholder="Search customers..."
+                  value={customerSearchQuery}
+                  onChange={(e) => setCustomerSearchQuery(e.target.value)}
+                  className="w-full pl-8 pr-8 py-2 bg-white/10 border border-green-500/20 rounded-lg text-white placeholder-green-300/60 text-sm focus:outline-none focus:border-green-500/40"
+                />
+                {customerSearchQuery && (
+                  <button
+                    onClick={() => setCustomerSearchQuery("")}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-green-300/60 hover:text-white"
+                  >
+                    <X size={14} />
+                  </button>
                 )}
               </div>
+
+              {/* Customer List */}
+              <div className="max-h-48 overflow-y-auto space-y-1 scrollbar-thin scrollbar-thumb-green-500/20">
+                {isLoadingCustomers && (
+                  <div className="text-center py-4 text-green-300/60 text-sm">
+                    Loading customers...
+                  </div>
+                )}
+                {!isLoadingCustomers && customers.length === 0 && (
+                  <div className="text-center py-4 text-green-300/60 text-sm">
+                    No customers found
+                  </div>
+                )}
+                {!isLoadingCustomers &&
+                  customers.length > 0 &&
+                  customers.map((customer) => (
+                    <motion.button
+                      key={customer.id}
+                      onClick={() => handleCustomerSelect(customer)}
+                      className={`w-full text-left p-2 rounded-lg transition-all text-sm ${
+                        selectedCustomer?.id === customer.id
+                          ? "bg-green-500/20 border border-green-500/40 text-white"
+                          : "bg-white/5 hover:bg-white/10 text-green-300 border border-transparent"
+                      }`}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <div className="font-medium">{customer.name}</div>
+                      <div className="text-xs opacity-80">{customer.email}</div>
+                    </motion.button>
+                  ))}
+              </div>
+            </motion.div>
+          )}
+        </div>
+
+        {/* Vehicle Section */}
+        {selectedCustomer && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => setIsCarListOpen(!isCarListOpen)}
+                className="flex items-center space-x-2 text-green-300 hover:text-white transition-colors"
+              >
+                {isCarListOpen ? (
+                  <ChevronDown size={16} />
+                ) : (
+                  <ChevronRight size={16} />
+                )}
+                <span className="font-medium">Vehicles</span>
+                <span className="text-xs bg-green-500/20 px-2 py-1 rounded">
+                  {selectedCustomer.cars.length}
+                </span>
+              </button>{" "}
+              <AddVehicleDialog
+                customerId={selectedCustomer.id}
+                onVehicleAdded={handleVehicleAdded}
+              />
+            </div>
+
+            {isCarListOpen && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="space-y-2"
+              >
+                {/* Car Search */}
+                {selectedCustomer.cars.length > 0 && (
+                  <div className="relative">
+                    <Search
+                      size={14}
+                      className="absolute left-3 top-1/2 transform -translate-y-1/2 text-green-300/60"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Search vehicles..."
+                      value={carSearchQuery}
+                      onChange={(e) => setCarSearchQuery(e.target.value)}
+                      className="w-full pl-8 pr-8 py-2 bg-white/10 border border-green-500/20 rounded-lg text-white placeholder-green-300/60 text-sm focus:outline-none focus:border-green-500/40"
+                    />
+                    {carSearchQuery && (
+                      <button
+                        onClick={() => setCarSearchQuery("")}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-green-300/60 hover:text-white"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+                )}{" "}
+                {/* Car List */}
+                <div className="max-h-48 overflow-y-auto space-y-1 scrollbar-thin scrollbar-thumb-green-500/20">
+                  {selectedCustomer.cars.length === 0 && (
+                    <div className="text-center py-4 text-green-300/60 text-sm">
+                      No vehicles available
+                    </div>
+                  )}
+                  {selectedCustomer.cars.length > 0 &&
+                    filteredCars.length === 0 && (
+                      <div className="text-center py-4 text-green-300/60 text-sm">
+                        No vehicles match your search
+                      </div>
+                    )}
+                  {filteredCars.length > 0 &&
+                    filteredCars.map((car) => (
+                      <motion.button
+                        key={car.id}
+                        onClick={() => handleCarSelect(car)}
+                        className={`w-full text-left p-2 rounded-lg transition-all text-sm ${
+                          selectedCar?.id === car.id
+                            ? "bg-green-500/20 border border-green-500/40 text-white"
+                            : "bg-white/5 hover:bg-white/10 text-green-300 border border-transparent"
+                        }`}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <div className="font-medium">
+                          {car.year} {car.color_name}
+                        </div>
+                        <div className="text-xs opacity-80">
+                          {car.code} {car.numbers} • {car.city.name.en}
+                        </div>
+                      </motion.button>
+                    ))}
+                </div>
+              </motion.div>
             )}
-          </motion.div>
+          </div>
         )}
-        {/* Clear Selection Button */}
+
+        {/* Spacer */}
+        <div className="flex-1"></div>
+
+        {/* Clear Selection Button - Compact */}
         {(selectedCustomer || selectedCar) && (
           <motion.button
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            onClick={() => {
-              setSelectedCustomer(null);
-              setSelectedCar(null);
-            }}
-            className="w-full py-2 px-4 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-300 rounded-lg transition-all duration-300 text-sm font-medium"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            onClick={clearSelection}
+            className="flex items-center justify-center space-x-2 w-full py-2 px-3 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-300 rounded-lg transition-all duration-300 text-xs font-medium"
           >
-            Clear Selection
+            <X size={14} />
+            <span>Clear Selection</span>
           </motion.button>
         )}
       </motion.div>

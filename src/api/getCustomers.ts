@@ -69,7 +69,10 @@ export interface CustomersResponse {
 }
 
 // API functions
-export const getCustomers = async (): Promise<CustomersResponse> => {
-  const response = await axios.get("/pos/customers");
+export const getCustomers = async (
+  searchQuery?: string
+): Promise<CustomersResponse> => {
+  const params = searchQuery ? { q: searchQuery } : {};
+  const response = await axios.get("/pos/customers", { params });
   return response.data;
 };

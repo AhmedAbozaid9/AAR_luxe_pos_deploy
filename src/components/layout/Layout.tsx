@@ -20,9 +20,9 @@ const Layout = () => {
       </motion.div>
       {/* Main content area */}
       <div className="flex-1 flex flex-col">
+        {" "}
         {/* Header */}
         <Header />
-
         {/* Main content */}
         <motion.main
           className="flex-1 p-8 bg-gradient-to-br from-gray-50 to-white overflow-auto"

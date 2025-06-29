@@ -1,30 +1,39 @@
 import { motion } from "framer-motion";
+import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getServices, type Service } from "../api/getServices";
-import { useCustomerStore } from "../stores/customerStore";
+import ServiceHeader from "../components/general/ServiceHeader";
 
 const Services = () => {
-  const { selectedCustomer, selectedCar } = useCustomerStore();
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    const fetchServices = async () => {
-      try {
-        setLoading(true);
-        const response = await getServices();
-        setServices(response.data);
-      } catch (err) {
-        setError("Failed to load services");
-        console.error("Error fetching services:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchServices();
-  }, []); // Function to get the minimum price for a service
+  }, []);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      fetchServices(searchQuery);
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery]);
+
+  const fetchServices = async (query?: string) => {
+    try {
+      setLoading(true);
+      const response = await getServices(query);
+      setServices(response.data);
+    } catch (err) {
+      setError("Failed to load services");
+      console.error("Error fetching services:", err);
+    } finally {
+      setLoading(false);
+    }
+  }; // Function to get the minimum price for a service
   const getMinPrice = (service: Service) => {
     if (service.prices_min_price) {
       return `AED ${service.prices_min_price.toLocaleString()}`;
@@ -40,126 +49,138 @@ const Services = () => {
         return `From AED ${minPrice.toLocaleString()}`;
       }
     }
-
     return "Contact for pricing";
   };
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-        delayChildren: 0.2,
-      },
-    },
-  };
-
-  const cardVariants = {
-    hidden: { opacity: 0, y: 30, scale: 0.9 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      scale: 1,
-    },
-  };
-
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+      <div className="h-full">
+        <ServiceHeader title="Services" />
+        <div className="flex justify-center items-center h-64">
+          <div className="text-center">
+            <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+            <p className="text-gray-600">Loading services...</p>
+          </div>
+        </div>
       </div>
     );
   }
+
   if (error) {
     return (
-      <div className="text-center py-8">
-        <p className="text-red-600 text-lg">{error}</p>
-        <button
-          onClick={() => window.location.reload()}
-          className="mt-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-        >
-          Try Again
-        </button>
+      <div className="h-full">
+        <ServiceHeader title="Services" />
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="text-red-500 text-xl mb-2">⚠️</div>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <button
+              onClick={() => fetchServices()}
+              className="px-6 py-2 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-colors font-medium"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
-
   if (!loading && services.length === 0) {
     return (
-      <div className="text-center py-16">
-        <div className="text-6xl mb-4">🔧</div>
-        <h2 className="text-2xl font-bold text-gray-700 mb-2">
-          No Services Available
-        </h2>
-        <p className="text-gray-500">
-          We're currently updating our services. Please check back later.
-        </p>
-      </div>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+      >
+        <ServiceHeader title="Services" />
+
+        {/* Search Bar */}
+        <div className="mb-8">
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="relative max-w-2xl mx-auto"
+          >
+            <Search
+              className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"
+              size={20}
+            />
+            <input
+              type="text"
+              placeholder="Search services..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-12 pr-6 py-4 text-lg bg-white border border-gray-200 rounded-2xl focus:ring-2 focus:ring-green-500 focus:border-transparent shadow-sm hover:shadow-md transition-all duration-300 placeholder-gray-400"
+            />
+          </motion.div>
+        </div>
+
+        <div className="text-center py-12">
+          <div className="text-6xl mb-4">🔧</div>
+          <h3 className="text-xl font-semibold text-gray-700 mb-2">
+            No services found
+          </h3>
+          <p className="text-gray-500">
+            {searchQuery
+              ? "Try adjusting your search criteria"
+              : "No services are currently available"}
+          </p>
+        </div>
+      </motion.div>
     );
   }
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6 }}
     >
-      <motion.h1
-        className="text-4xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent mb-8"
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.6, delay: 0.1 }}
-      >
-        Services
-      </motion.h1>
-
-      {/* Customer Information */}
-      {selectedCustomer && (
+      <ServiceHeader title="Services" />
+      {/* Search Bar */}
+      <div className="mb-8">
         <motion.div
-          initial={{ opacity: 0, y: -10 }}
+          initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="mb-8 p-6 bg-gradient-to-r from-green-50 to-green-100 rounded-2xl border border-green-200"
+          transition={{ duration: 0.4 }}
+          className="relative max-w-2xl mx-auto"
         >
-          <h2 className="text-lg font-semibold text-green-800 mb-3">
-            Service for: {selectedCustomer.name}
-          </h2>
-          <div className="flex flex-wrap gap-4 text-sm">
-            <span className="text-green-700">📧 {selectedCustomer.email}</span>
-            <span className="text-green-700">
-              📱 {selectedCustomer.phone_national}
-            </span>
-            {selectedCar && (
-              <span className="text-green-700">
-                🚗 {selectedCar.year} {selectedCar.color_name} -{" "}
-                {selectedCar.code} {selectedCar.numbers}
-              </span>
-            )}
-          </div>
+          <Search
+            className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"
+            size={20}
+          />
+          <input
+            type="text"
+            placeholder="Search services..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-12 pr-6 py-4 text-lg bg-white border border-gray-200 rounded-2xl focus:ring-2 focus:ring-green-500 focus:border-transparent shadow-sm hover:shadow-md transition-all duration-300 placeholder-gray-400"
+          />
         </motion.div>
-      )}
-
+      </div>{" "}
       <motion.div
         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6, staggerChildren: 0.1 }}
       >
         {services.map((service, index) => (
           <motion.div
             key={service.id}
-            variants={cardVariants}
+            initial={{ opacity: 0, y: 30, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{
+              duration: 0.5,
+              delay: index * 0.1,
+              ease: "easeOut",
+            }}
             whileHover={{
               y: -8,
-              scale: 1.02,
-              transition: { duration: 0.3 },
+              transition: { duration: 0.2 },
             }}
-            whileTap={{ scale: 0.98 }}
-            className="group bg-white p-8 rounded-2xl shadow-lg border border-gray-100 hover:shadow-2xl hover:border-green-200 transition-all duration-300 cursor-pointer flex flex-col h-full"
+            className="bg-white rounded-3xl shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden border border-gray-100 h-[500px] flex flex-col"
           >
             {/* Header with icon and price */}
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-6 p-6 pb-0">
               <motion.div
                 className="flex items-center justify-center w-12 h-12"
                 whileHover={{ scale: 1.2, rotate: 10 }}
@@ -209,9 +230,10 @@ const Services = () => {
                       What's included:
                     </p>
                     <ul className="space-y-1">
-                      {service.included.slice(0, 3).map((item, idx) => (
+                      {" "}
+                      {service.included.slice(0, 3).map((item) => (
                         <li
-                          key={idx}
+                          key={`${service.id}-${item.en}`}
                           className="text-sm text-gray-600 flex items-start"
                         >
                           <span className="text-green-600 mr-2 flex-shrink-0">
@@ -239,7 +261,7 @@ const Services = () => {
               {/* Service metadata */}
               <div className="flex items-center justify-between mt-4 text-sm text-gray-500 border-t pt-4">
                 <div className="flex items-center space-x-4">
-                  {service.duration && (
+                  {Boolean(service.duration) && (
                     <span className="flex items-center">
                       <span className="mr-1">⏱️</span>
                       {service.duration} day{service.duration > 1 ? "s" : ""}

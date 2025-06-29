@@ -2,6 +2,7 @@ import { BrowserRouter, Route, Routes } from "react-router";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import Layout from "./components/layout/Layout";
 import LoginPage from "./pages/LoginPage";
+import Packages from "./pages/Packages";
 import Products from "./pages/Products";
 import Services from "./pages/Services";
 
@@ -22,6 +23,8 @@ function App() {
           }
         >
           <Route index element={<Services />} />
+          <Route path="services" element={<Services />} />
+          <Route path="packages" element={<Packages />} />
           <Route path="products" element={<Products />} />
         </Route>
       </Routes>

@@ -7,9 +7,9 @@ const Header = () => {
   const location = useLocation();
   const controls = useAnimationControls();
   const { user, logout } = useUserStore();
-
   const navItems = [
     { path: "/", name: "Services" },
+    { path: "/packages", name: "Packages" },
     { path: "/products", name: "Products" },
   ];
 

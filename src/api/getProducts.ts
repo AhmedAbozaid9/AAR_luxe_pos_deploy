@@ -49,9 +49,12 @@ export interface ProductsResponse {
   // Add other pagination fields as needed
 }
 
-export const getProducts = async (): Promise<ProductsResponse> => {
+export const getProducts = async (
+  search?: string
+): Promise<ProductsResponse> => {
   try {
-    const response = await axios.get<ProductsResponse>("/products");
+    const params = search ? { search } : {};
+    const response = await axios.get<ProductsResponse>("/products", { params });
     return response.data;
   } catch (error) {
     console.error("Error fetching products:", error);
