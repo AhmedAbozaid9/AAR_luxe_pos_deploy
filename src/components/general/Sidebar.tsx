@@ -1,8 +1,21 @@
 import { motion } from "framer-motion";
-import { ChevronDown, ChevronRight, Search, X } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  Minus,
+  Plus,
+  Search,
+  ShoppingCart,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { getCustomers, type Car, type Customer } from "../../api/getCustomers";
+import { submitCart } from "../../api/submitCart";
+import { useCartStore, type CartItem } from "../../stores/cartStore";
 import { useCustomerStore } from "../../stores/customerStore";
+import { useToastStore } from "../../stores/toastStore";
+import { useUserStore } from "../../stores/userStore";
 import { AddCustomerDialog } from "./AddCustomerDialog";
 import { AddVehicleDialog } from "./AddVehicleDialog";
 
@@ -14,7 +27,6 @@ const Sidebar = () => {
   const [carSearchQuery, setCarSearchQuery] = useState("");
   const [isCustomerListOpen, setIsCustomerListOpen] = useState(true);
   const [isCarListOpen, setIsCarListOpen] = useState(true);
-
   const {
     selectedCustomer,
     selectedCar,
@@ -22,6 +34,19 @@ const Sidebar = () => {
     setSelectedCar,
     clearSelection,
   } = useCustomerStore();
+
+  // Cart and user stores
+  const { user } = useUserStore();
+  const {
+    items,
+    removeItem,
+    updateQuantity,
+    clearCart,
+    getTotalItems,
+    getCartRequest,
+  } = useCartStore();
+  const { addToast } = useToastStore(); // State for checkout
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Debounced search for customers
   const debounceSearch = useCallback((searchQuery: string) => {
@@ -117,9 +142,140 @@ const Sidebar = () => {
   const isCustomerSelected = (customer: Customer): boolean => {
     return selectedCustomer !== null && selectedCustomer.id === customer.id;
   };
-
   const isCarSelected = (car: Car): boolean => {
     return selectedCar !== null && selectedCar.id === car.id;
+  };
+  // Cart helper functions
+  const handleQuantityChange = (itemId: string, newQuantity: number) => {
+    if (newQuantity < 1) {
+      removeItem(itemId);
+    } else {
+      updateQuantity(itemId, newQuantity);
+    }
+  };
+
+  // Calculate total price with dynamic pricing
+  const calculateCartTotal = () => {
+    return items.reduce((total, item) => {
+      return total + getItemPrice(item) * item.quantity;
+    }, 0);
+  };
+
+  const formatPrice = (price: number) => {
+    return `${price.toLocaleString()} AED`;
+  };
+
+  const getItemImage = (item: CartItem) => {
+    return item.image ?? "/placeholder-image.png";
+  };
+
+  const getItemDisplayName = (item: CartItem) => {
+    let displayName = item.name;
+    if (item.options && item.options.length > 0) {
+      const optionNames = item.options.map((opt) => opt.name).join(", ");
+      displayName += ` (${optionNames})`;
+    }
+    return displayName;
+  };
+  const getItemPrice = (item: CartItem) => {
+    let basePrice = item.price;
+
+    // Apply car-specific pricing adjustments if a car is selected
+    if (selectedCar) {
+      basePrice = calculateDynamicPrice(item, selectedCar);
+    }
+
+    const optionsPrice =
+      item.options?.reduce((sum, option) => sum + option.price, 0) ?? 0;
+    return basePrice + optionsPrice;
+  };
+
+  // Dynamic pricing calculation based on car characteristics
+  const calculateDynamicPrice = (item: CartItem, car: Car) => {
+    let adjustedPrice = item.price;
+
+    // Car type-based pricing adjustments
+    if (car.car_type_id) {
+      switch (car.car_type_id) {
+        case 1: // Small car - 10% discount
+          adjustedPrice *= 0.9;
+          break;
+        case 2: // Medium car - standard price
+          adjustedPrice *= 1.0;
+          break;
+        case 3: // Large car - 15% increase
+          adjustedPrice *= 1.15;
+          break;
+        case 4: // Luxury car - 25% increase
+          adjustedPrice *= 1.25;
+          break;
+        default:
+          adjustedPrice *= 1.0;
+      }
+    }
+
+    // Car group-based adjustments (if applicable)
+    if (car.car_group_id) {
+      switch (car.car_group_id) {
+        case 1: // Economy group - additional 5% discount
+          adjustedPrice *= 0.95;
+          break;
+        case 2: // Premium group - additional 10% increase
+          adjustedPrice *= 1.1;
+          break;
+        default:
+          break;
+      }
+    }
+
+    // Round to 2 decimal places
+    return Math.round(adjustedPrice * 100) / 100;
+  };
+
+  const handleCheckout = async () => {
+    if (!selectedCar || !user) {
+      addToast({
+        message: "Please select a customer and vehicle before checkout",
+        type: "error",
+      });
+      return;
+    }
+
+    if (items.length === 0) {
+      addToast({
+        message: "Your cart is empty",
+        type: "error",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const cartData = getCartRequest(selectedCar.id, user.id);
+      const response = await submitCart(cartData);
+
+      if (response.success) {
+        addToast({
+          message: response.message || "Order submitted successfully!",
+          type: "success",
+        });
+        clearCart();
+      } else {
+        addToast({
+          message: response.message || "Failed to submit order",
+          type: "error",
+        });
+      }
+    } catch (error) {
+      console.error("Checkout error:", error);
+      addToast({
+        message: "An error occurred during checkout",
+        type: "error",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -399,10 +555,146 @@ const Sidebar = () => {
                       className="ml-2 p-1 hover:bg-red-500/20 rounded text-red-300 hover:text-red-200 transition-colors"
                     >
                       <X size={14} />
-                    </button>
+                    </button>{" "}
                   </div>
                 </motion.div>
               </div>
+            )}
+
+            {/* Cart Section - Only show if user exists and cart has items */}
+            {user && items.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-6 space-y-4"
+              >
+                {/* Cart Header */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <ShoppingCart className="text-green-300" size={16} />
+                    <span className="text-green-300 font-medium text-sm">
+                      Cart ({getTotalItems()})
+                    </span>
+                  </div>
+                  <button
+                    onClick={clearCart}
+                    className="text-xs text-red-300 hover:text-red-200 transition-colors"
+                  >
+                    Clear All
+                  </button>
+                </div>
+
+                {/* Cart Items */}
+                <div className="space-y-3 max-h-64 overflow-y-auto">
+                  {items.map((item) => (
+                    <motion.div
+                      key={item.id}
+                      layout
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="bg-white/5 rounded-lg p-3 border border-green-500/20"
+                    >
+                      <div className="flex items-start space-x-3">
+                        {/* Item Image */}
+                        <div className="w-10 h-10 bg-gray-700 rounded-lg overflow-hidden flex-shrink-0">
+                          <img
+                            src={getItemImage(item)}
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src =
+                                "/placeholder-image.png";
+                            }}
+                          />
+                        </div>
+
+                        {/* Item Details */}
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-white text-xs line-clamp-2">
+                            {getItemDisplayName(item)}
+                          </h4>
+                          <p className="text-xs text-green-300/60 capitalize mb-1">
+                            {item.purchasable_type}
+                          </p>
+
+                          {/* Price */}
+                          <p className="text-green-300 font-semibold text-xs">
+                            {formatPrice(getItemPrice(item))}
+                          </p>
+
+                          {/* Quantity Controls */}
+                          <div className="flex items-center justify-between mt-2">
+                            <div className="flex items-center space-x-1">
+                              <button
+                                onClick={() =>
+                                  handleQuantityChange(
+                                    item.id,
+                                    item.quantity - 1
+                                  )
+                                }
+                                className="p-1 hover:bg-white/10 rounded text-green-300 transition-colors"
+                              >
+                                <Minus size={12} />
+                              </button>
+                              <span className="font-medium text-xs text-white w-6 text-center">
+                                {item.quantity}
+                              </span>
+                              <button
+                                onClick={() =>
+                                  handleQuantityChange(
+                                    item.id,
+                                    item.quantity + 1
+                                  )
+                                }
+                                className="p-1 hover:bg-white/10 rounded text-green-300 transition-colors"
+                              >
+                                <Plus size={12} />
+                              </button>
+                            </div>
+
+                            {/* Remove Button */}
+                            <button
+                              onClick={() => removeItem(item.id)}
+                              className="p-1 hover:bg-red-500/20 text-red-300 rounded transition-colors"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+
+                {/* Cart Total and Checkout */}
+                <div className="pt-3 border-t border-green-500/20">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-medium text-white">
+                      Total:
+                    </span>
+                    <span className="text-lg font-bold text-green-300">
+                      {formatPrice(calculateCartTotal())}
+                    </span>
+                  </div>
+
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleCheckout}
+                    disabled={
+                      isSubmitting || items.length === 0 || !selectedCar
+                    }
+                    className={`w-full py-2 rounded-lg font-medium text-sm transition-colors ${
+                      isSubmitting || items.length === 0 || !selectedCar
+                        ? "bg-gray-600 text-gray-400 cursor-not-allowed"
+                        : "bg-green-600 hover:bg-green-700 text-white"
+                    }`}
+                  >
+                    {isSubmitting ? "Processing..." : "Checkout"}
+                  </motion.button>
+                </div>
+              </motion.div>
             )}
           </div>
         )}

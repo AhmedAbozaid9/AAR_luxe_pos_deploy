@@ -33,8 +33,7 @@ const Header = () => {
               </div>
             );
           })}
-        </nav>
-
+        </nav>{" "}
         {/* Right side - Avatar and Dashboard */}
         <div className="flex items-center space-x-4">
           {/* User Avatar */}

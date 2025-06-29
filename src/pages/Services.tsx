@@ -8,17 +8,19 @@ import {
 } from "../api/getServices";
 import ServiceHeader from "../components/general/ServiceHeader";
 import { getMinPrice, getPriceForCarGroup } from "../lib/utils";
+import { useCartStore } from "../stores/cartStore";
 import { useCustomerStore } from "../stores/customerStore";
+import { useToastStore } from "../stores/toastStore";
 
 const Services = () => {
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [flippedCards, setFlippedCards] = useState<Set<number>>(new Set());
-
-  // Get selected car from customer store for dynamic pricing
+  const [flippedCards, setFlippedCards] = useState<Set<number>>(new Set()); // Get selected car from customer store for dynamic pricing
   const { selectedCar } = useCustomerStore();
+  const { addItem } = useCartStore();
+  const { addToast } = useToastStore();
 
   useEffect(() => {
     fetchServices();
@@ -82,11 +84,46 @@ const Services = () => {
         return "selected";
     }
   };
+  const addToCart = (option: ServiceOption, service: Service) => {
+    const dynamicPrice = getOptionPrice(option);
 
-  const addToCart = (option: ServiceOption) => {
-    // Implementation will be added based on cart system requirements
-    console.log("Adding to cart:", option.name.en, "ID:", option.id);
-    // Future: Integrate with cart store/context
+    if (dynamicPrice === null) {
+      // Handle case where price is not available
+      console.warn("Price not available for option:", option.name.en);
+      addToast({
+        message: "Price not available for this service option",
+        type: "error",
+      });
+      return;
+    }
+
+    // Find the parent service to include in cart item
+    const optionPrices =
+      option.prices?.map((p) => ({
+        id: p.id,
+        name: `${service.name.en} - ${option.name.en}`,
+        price: p.price,
+      })) ?? [];
+
+    addItem({
+      purchasable_id: service.id,
+      purchasable_type: "service",
+      quantity: 1,
+      option_ids: [option.id],
+      name: service.name.en,
+      price: dynamicPrice,
+      image: service.icon?.url,
+      options: optionPrices.filter((p) =>
+        selectedCar?.car_group_id
+          ? p.id === selectedCar.car_group_id
+          : p.price === dynamicPrice
+      ),
+    });
+
+    addToast({
+      message: `${option.name.en} added to cart!`,
+      type: "success",
+    });
   };
 
   if (loading) {
@@ -386,11 +423,11 @@ const Services = () => {
                                   </div>
                                 );
                               })()}
-                              {/* Add to Cart Button */}
+                              {/* Add to Cart Button */}{" "}
                               <motion.button
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
-                                onClick={() => addToCart(option)}
+                                onClick={() => addToCart(option, service)}
                                 className="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg text-xs font-semibold transition-colors duration-200 flex items-center justify-center space-x-2"
                               >
                                 <ShoppingCart size={14} />

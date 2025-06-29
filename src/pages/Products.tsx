@@ -3,12 +3,16 @@ import { Search, Star } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getProducts, type Product } from "../api/getProducts";
 import ServiceHeader from "../components/general/ServiceHeader";
+import { useCartStore } from "../stores/cartStore";
+import { useToastStore } from "../stores/toastStore";
 
 const Products = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(""); // Cart and customer stores
+  const { addItem } = useCartStore();
+  const { addToast } = useToastStore();
 
   useEffect(() => {
     fetchProducts();
@@ -33,8 +37,7 @@ const Products = () => {
     } finally {
       setLoading(false);
     }
-  };
-  // Function to get the price display with discount
+  }; // Function to get the price display with discount
   const getPriceDisplay = (product: Product) => {
     const hasDiscount = product.before_discount_price > product.price;
     return {
@@ -50,6 +53,22 @@ const Products = () => {
           )
         : 0,
     };
+  };
+  // Function to add product to cart
+  const addToCart = (product: Product) => {
+    addItem({
+      purchasable_id: product.id,
+      purchasable_type: "product",
+      quantity: 1,
+      name: product.name.en,
+      price: product.price,
+      image: product.image?.url,
+    });
+
+    addToast({
+      message: `${product.name.en} added to cart!`,
+      type: "success",
+    });
   };
   if (loading) {
     return (
@@ -229,11 +248,11 @@ const Products = () => {
                           <sub className="text-xs font-normal ml-1">AED</sub>
                         </div>
                       )}
-                    </div>
-
+                    </div>{" "}
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
+                      onClick={() => addToCart(product)}
                       className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl transition-colors duration-200 text-sm font-semibold shadow-sm hover:shadow-md"
                     >
                       Add to Cart

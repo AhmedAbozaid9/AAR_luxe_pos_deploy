@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Outlet, useLocation } from "react-router";
 import Sidebar from "../general/Sidebar";
+import ToastContainer from "../general/ToastContainer";
 import Header from "./Header";
 
 const Layout = () => {
@@ -38,9 +39,11 @@ const Layout = () => {
             transition={{ duration: 0.3 }}
           >
             <Outlet />
-          </motion.div>
+          </motion.div>{" "}
         </motion.main>
       </div>
+      {/* Toast Notifications */}
+      <ToastContainer />
     </div>
   );
 };

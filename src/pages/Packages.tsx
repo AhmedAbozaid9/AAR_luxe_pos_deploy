@@ -4,16 +4,18 @@ import { useEffect, useState } from "react";
 import { getPackages, type Package } from "../api/getPackages";
 import ServiceHeader from "../components/general/ServiceHeader";
 import { getMinPrice, getPriceForCarGroup } from "../lib/utils";
+import { useCartStore } from "../stores/cartStore";
 import { useCustomerStore } from "../stores/customerStore";
+import { useToastStore } from "../stores/toastStore";
 
 const Packages = () => {
   const [packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-
-  // Get selected car from customer store for dynamic pricing
+  const [searchQuery, setSearchQuery] = useState(""); // Get selected car from customer store for dynamic pricing
   const { selectedCar } = useCustomerStore();
+  const { addItem } = useCartStore();
+  const { addToast } = useToastStore();
 
   useEffect(() => {
     fetchPackages();
@@ -59,7 +61,6 @@ const Packages = () => {
     const minPrice = getMinPrice(pkg.prices);
     return { price: minPrice, showCarInfo: false };
   };
-
   // Get car size name based on car group ID
   const getCarSizeName = (carGroupId: number): string => {
     switch (carGroupId) {
@@ -72,6 +73,24 @@ const Packages = () => {
       default:
         return "selected";
     }
+  };
+  // Function to add package to cart
+  const addToCart = (pkg: Package) => {
+    const { price } = getDynamicPrice(pkg);
+
+    addItem({
+      purchasable_id: pkg.id,
+      purchasable_type: "package",
+      quantity: 1,
+      name: pkg.name.en,
+      price: price ?? 0,
+      image: pkg.image?.url,
+    });
+
+    addToast({
+      message: `${pkg.name.en} package added to cart!`,
+      type: "success",
+    });
   };
 
   if (error) {
@@ -247,11 +266,11 @@ const Packages = () => {
                         </div>
                       );
                     })()}
-                  </div>
-
+                  </div>{" "}
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
+                    onClick={() => addToCart(pkg)}
                     className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors duration-200 text-sm font-medium"
                   >
                     Select Package
