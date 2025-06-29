@@ -151,6 +151,19 @@ const Header = () => {
 
           {/* Logout button */}
           <motion.button
+            className="px-4 py-2 text-sm font-medium text-blue-600 hover:text-white hover:bg-blue-600 border border-blue-300 hover:border-blue-600 rounded-lg transition-all duration-300 hover:shadow-lg"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <Link
+              to="/https://beta.aarluxe.ae/admin/login"
+              onClick={handleLogout}
+              target="_blank"
+            >
+              Dashboard
+            </Link>
+          </motion.button>
+          <motion.button
             onClick={handleLogout}
             className="px-4 py-2 text-sm font-medium text-red-600 hover:text-white hover:bg-red-600 border border-red-300 hover:border-red-600 rounded-lg transition-all duration-300 hover:shadow-lg"
             whileHover={{ scale: 1.05 }}
