@@ -27,7 +27,7 @@ const Header = () => {
       transition={{ duration: 0.5 }}
     >
       {" "}
-      <div className="flex items-center justify-between w-full max-w-7xl mx-auto">
+      <div className="flex items-center justify-between w-full mx-auto">
         <motion.nav className="flex items-center space-x-1" animate={controls}>
           {navItems.map((item, index) => {
             const isActive = location.pathname === item.path;
