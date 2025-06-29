@@ -57,8 +57,8 @@ const Services = () => {
         <ServiceHeader title="Services" />
         <div className="flex justify-center items-center h-64">
           <div className="text-center">
-            <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-            <p className="text-gray-600">Loading services...</p>
+            <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin mb-4 mx-auto"></div>
+            <p className="text-gray-600 text-center">Loading services...</p>
           </div>
         </div>
       </div>

@@ -75,12 +75,12 @@ const Packages = () => {
             className="w-full pl-12 pr-6 py-4 text-lg bg-white border border-gray-200 rounded-2xl focus:ring-2 focus:ring-green-500 focus:border-transparent shadow-sm hover:shadow-md transition-all duration-300 placeholder-gray-400"
           />
         </motion.div>
-      </div>
+      </div>{" "}
       {loading ? (
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
-            <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-            <p className="text-gray-600">Loading packages...</p>
+            <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin mb-4 mx-auto"></div>
+            <p className="text-gray-600 text-center">Loading packages...</p>
           </div>
         </div>
       ) : (
