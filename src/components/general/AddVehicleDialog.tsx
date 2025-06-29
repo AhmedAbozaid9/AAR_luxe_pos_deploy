@@ -52,7 +52,6 @@ export const AddVehicleDialog = ({
     PlateTypeForCity[]
   >([]);
   const [plateLetters, setPlateLetters] = useState<string[]>([]);
-
   const [formData, setFormData] = useState({
     city_id: "",
     car_brand_id: "",
@@ -61,7 +60,6 @@ export const AddVehicleDialog = ({
     car_type_id: "",
     car_group_id: "",
     color: "",
-    color_name: "",
     year: "",
     code: "",
     numbers: "",
@@ -128,7 +126,6 @@ export const AddVehicleDialog = ({
       setPlateTypesForCity([]);
     }
   }, [formData.city_id]);
-
   // Load plate letters when city and plate type change
   useEffect(() => {
     if (formData.city_id && formData.plate_type_id) {
@@ -140,14 +137,23 @@ export const AddVehicleDialog = ({
           );
           setPlateLetters(letters);
           console.log("Plate letters received:", letters);
+          // Clear code if current code is not in the new letters list
+          setFormData((prev) => ({
+            ...prev,
+            code: letters.includes(prev.code) ? prev.code : "",
+          }));
         } catch (err) {
           console.error("Error loading plate letters:", err);
           setPlateLetters([]);
+          // Clear code when letters fail to load
+          setFormData((prev) => ({ ...prev, code: "" }));
         }
       };
       loadPlateLetters();
     } else {
       setPlateLetters([]);
+      // Clear code when no city or plate type selected
+      setFormData((prev) => ({ ...prev, code: "" }));
     }
   }, [formData.city_id, formData.plate_type_id]);
 
@@ -167,7 +173,6 @@ export const AddVehicleDialog = ({
         car_type_id: formData.car_type_id,
         car_group_id: parseInt(formData.car_group_id),
         color: formData.color,
-        color_name: formData.color_name,
         year: formData.year,
         code: formData.code,
         numbers: formData.numbers,
@@ -188,7 +193,6 @@ export const AddVehicleDialog = ({
           car_type_id: response.car_type_id ?? null,
           plate_type_id: response.plate_type_id ?? carData.plate_type_id,
           color: response.color ?? carData.color,
-          color_name: response.color_name ?? carData.color_name,
           year: response.year ?? carData.year,
           code: response.code ?? carData.code,
           numbers: response.numbers ?? carData.numbers,
@@ -260,7 +264,6 @@ export const AddVehicleDialog = ({
         return newData;
       });
     };
-
   const resetForm = () => {
     setFormData({
       city_id: "",
@@ -270,7 +273,6 @@ export const AddVehicleDialog = ({
       car_type_id: "",
       car_group_id: "",
       color: "",
-      color_name: "",
       year: "",
       code: "",
       numbers: "",
@@ -522,33 +524,13 @@ export const AddVehicleDialog = ({
                 <Input
                   id="color"
                   type="text"
-                  placeholder="Red"
+                  placeholder="#FFFFFF"
                   value={formData.color}
                   onChange={(e) => handleInputChange("color")(e.target.value)}
                   required
                   disabled={isLoading}
-                />
+                />{" "}
               </div>
-              {/* Color Name */}
-              <div className="space-y-2">
-                <label
-                  htmlFor="color-name"
-                  className="text-sm font-medium text-green-300"
-                >
-                  Color Name *
-                </label>
-                <Input
-                  id="color-name"
-                  type="text"
-                  placeholder="احمر"
-                  value={formData.color_name}
-                  onChange={(e) =>
-                    handleInputChange("color_name")(e.target.value)
-                  }
-                  required
-                  disabled={isLoading}
-                />
-              </div>{" "}
               {/* Plate Code */}
               <div className="space-y-2">
                 <label

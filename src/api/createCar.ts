@@ -9,7 +9,7 @@ export interface CreateCarRequest {
   car_type_id: string;
   car_group_id: number;
   color: string;
-  color_name: string;
+  color_name?: string;
   year: string;
   code: string;
   numbers: string;
