@@ -26,6 +26,9 @@ const Sidebar = () => {
   const [carSearchQuery, setCarSearchQuery] = useState("");
   const [isCustomerListOpen, setIsCustomerListOpen] = useState(true);
   const [isCarListOpen, setIsCarListOpen] = useState(true);
+  const [expandedCartItems, setExpandedCartItems] = useState<Set<string>>(
+    new Set()
+  );
   const {
     selectedCustomer,
     selectedCar,
@@ -108,11 +111,13 @@ const Sidebar = () => {
       clearCart();
       // Send empty cart to server to reset pricing
       await syncWithServer(selectedCar.id, selectedCustomer.id);
+      console.log("Cart cleared and synced with server");
       addToast({
         message: "Cart cleared successfully",
         type: "success",
       });
-    } catch {
+    } catch (error) {
+      console.error("Failed to clear cart:", error);
       addToast({
         message: "Failed to clear cart",
         type: "error",
@@ -252,8 +257,10 @@ const Sidebar = () => {
         );
         if (selectedCar && selectedCustomer) {
           await syncWithServer(selectedCar.id, selectedCustomer.id);
+          console.log("Quantity updated and synced with server");
         }
-      } catch {
+      } catch (error) {
+        console.error("Failed to update quantity:", error);
         addToast({
           message: "Failed to update item quantity",
           type: "error",
@@ -266,12 +273,14 @@ const Sidebar = () => {
       removeItem(item.purchasable_id, item.purchasable_type, item.option_ids);
       if (selectedCar && selectedCustomer) {
         await syncWithServer(selectedCar.id, selectedCustomer.id);
+        console.log("Item removed and synced with server");
       }
       addToast({
         message: "Item removed from cart",
         type: "success",
       });
-    } catch {
+    } catch (error) {
+      console.error("Failed to remove item:", error);
       addToast({
         message: "Failed to remove item",
         type: "error",
@@ -279,6 +288,7 @@ const Sidebar = () => {
     }
   };
   const formatPrice = (price: number) => {
+    console.log("Formatting price:", price);
     return `${price.toLocaleString()} AED`;
   };
 
@@ -287,66 +297,109 @@ const Sidebar = () => {
   };
 
   const getItemDisplayName = (item: CartItem) => {
-    let displayName = item.name;
-    if (item.options && item.options.length > 0) {
-      const optionNames = item.options.map((opt) => opt.name).join(", ");
-      displayName += ` (${optionNames})`;
+    return item.name;
+  };
+
+  const toggleCartItemExpansion = (itemId: string) => {
+    setExpandedCartItems((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(itemId)) {
+        newSet.delete(itemId);
+      } else {
+        newSet.add(itemId);
+      }
+      return newSet;
+    });
+  };
+
+  const getSelectedOptionsDisplay = (item: CartItem) => {
+    // Only show for service items with options
+    if (
+      item.purchasable_type !== "service" ||
+      (!item.selectedOptions && !item.option_ids)
+    ) {
+      return null;
     }
-    return displayName;
+
+    const itemId = item.id || `${item.purchasable_id}-${item.purchasable_type}`;
+    const isExpanded = expandedCartItems.has(itemId);
+
+    // Use selectedOptions if available, otherwise fall back to option_ids
+    const hasDetailedOptions =
+      item.selectedOptions && item.selectedOptions.length > 0;
+    const optionCount = hasDetailedOptions
+      ? item.selectedOptions!.length
+      : item.option_ids?.length || 0;
+
+    if (optionCount === 0) {
+      return null;
+    }
+
+    return (
+      <div className="mt-1">
+        <button
+          onClick={() => toggleCartItemExpansion(itemId)}
+          className="flex items-center space-x-1 text-xs text-green-300/70 hover:text-green-300 transition-colors"
+        >
+          <ChevronRight
+            size={12}
+            className={`transform transition-transform ${
+              isExpanded ? "rotate-90" : ""
+            }`}
+          />
+          <span className="font-medium">
+            {optionCount} option{optionCount > 1 ? "s" : ""} selected
+          </span>
+        </button>
+
+        {isExpanded && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            className="mt-2 space-y-1 pl-3 border-l border-green-500/20"
+          >
+            {hasDetailedOptions
+              ? // Show detailed option information
+                item.selectedOptions!.map((option) => (
+                  <div
+                    key={option.id}
+                    className="text-xs text-gray-300 flex items-center justify-between"
+                  >
+                    <div className="flex items-center space-x-1">
+                      <span className="w-1 h-1 bg-green-400 rounded-full"></span>
+                      <span>{option.name.en}</span>
+                      {option.is_exclusive === 1 && (
+                        <span className="text-xs bg-yellow-500/20 text-yellow-400 px-1 py-0.5 rounded text-[10px]">
+                          Exclusive
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))
+              : // Show option IDs as fallback
+                item.option_ids!.map((optionId) => (
+                  <div
+                    key={optionId}
+                    className="text-xs text-gray-300 flex items-center space-x-1"
+                  >
+                    <span className="w-1 h-1 bg-green-400 rounded-full"></span>
+                    <span>Option ID: {optionId}</span>
+                    <span className="text-xs text-gray-400">
+                      (Loading details...)
+                    </span>
+                  </div>
+                ))}
+          </motion.div>
+        )}
+      </div>
+    );
   };
   const getItemPrice = (item: CartItem) => {
-    let basePrice = item.price;
-
-    // Apply car-specific pricing adjustments if a car is selected
-    if (selectedCar) {
-      basePrice = calculateDynamicPrice(item, selectedCar);
-    }
-
-    const optionsPrice =
-      item.options?.reduce((sum, option) => sum + option.price, 0) ?? 0;
-    return basePrice + optionsPrice;
-  };
-
-  // Dynamic pricing calculation based on car characteristics
-  const calculateDynamicPrice = (item: CartItem, car: Car) => {
-    let adjustedPrice = item.price;
-
-    // Car type-based pricing adjustments
-    if (car.car_type_id) {
-      switch (car.car_type_id) {
-        case 1: // Small car - 10% discount
-          adjustedPrice *= 0.9;
-          break;
-        case 2: // Medium car - standard price
-          adjustedPrice *= 1.0;
-          break;
-        case 3: // Large car - 15% increase
-          adjustedPrice *= 1.15;
-          break;
-        case 4: // Luxury car - 25% increase
-          adjustedPrice *= 1.25;
-          break;
-        default:
-          adjustedPrice *= 1.0;
-      }
-    }
-
-    // Car group-based adjustments (if applicable)
-    if (car.car_group_id) {
-      switch (car.car_group_id) {
-        case 1: // Economy group - additional 5% discount
-          adjustedPrice *= 0.95;
-          break;
-        case 2: // Premium group - additional 10% increase
-          adjustedPrice *= 1.1;
-          break;
-        default:
-          break;
-      }
-    }
-
-    // Round to 2 decimal places
-    return Math.round(adjustedPrice * 100) / 100;
+    // Use the server-calculated price directly
+    // The server already handles dynamic pricing based on car selection
+    return item.price;
   };
   const handleCheckout = async () => {
     if (!selectedCar || !selectedCustomer) {
@@ -387,6 +440,11 @@ const Sidebar = () => {
       setIsSubmitting(false);
     }
   };
+
+  // Debug effect to track totalPrice changes
+  useEffect(() => {
+    console.log("Total price changed:", totalPrice);
+  }, [totalPrice]);
 
   return (
     <div className="h-full bg-white/5 backdrop-blur-xl border-r border-green-500/20 p-6">
@@ -726,8 +784,10 @@ const Sidebar = () => {
                           <p className="text-xs text-green-300/60 capitalize mb-1">
                             {item.purchasable_type}
                           </p>
+                          {/* Selected Options Display */}
+                          {getSelectedOptionsDisplay(item)}
                           {/* Price */}
-                          <p className="text-green-300 font-semibold text-xs">
+                          <p className="text-green-300 font-semibold text-xs mt-1">
                             {formatPrice(getItemPrice(item))}
                           </p>{" "}
                           {/* Quantity Controls */}
@@ -829,7 +889,10 @@ const Sidebar = () => {
                         Total:
                       </span>
                       <span className="text-xl font-bold text-green-300">
-                        {formatPrice(totalPrice)}
+                        {(() => {
+                          console.log("Displaying total price:", totalPrice);
+                          return formatPrice(totalPrice);
+                        })()}
                       </span>
                     </div>
 

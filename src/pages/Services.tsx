@@ -140,6 +140,16 @@ const Services = () => {
           price: p.price,
         })) ?? [];
 
+      console.log("Adding service to cart:", {
+        purchasable_id: service.id,
+        purchasable_type: "service",
+        quantity: 1,
+        option_ids: [option.id],
+        name: service.name.en,
+        price: dynamicPrice,
+        image: service.icon?.url,
+      });
+
       addItem({
         purchasable_id: service.id,
         purchasable_type: "service",

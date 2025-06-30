@@ -1,6 +1,21 @@
 import { create } from "zustand";
 import { submitCartForPricing, type CartItemRequest } from "../api/cart";
+import { getServices, type ServiceOption } from "../api/getServices";
 import { submitOrder, type OrderRequest } from "../api/submitOrder";
+
+// Helper function to fetch service options by service ID
+const getServiceOptions = async (
+  serviceId: number
+): Promise<ServiceOption[]> => {
+  try {
+    const response = await getServices();
+    const service = response.data.find((s) => s.id === serviceId);
+    return service?.options || [];
+  } catch (error) {
+    console.error("Error fetching service options:", error);
+    return [];
+  }
+};
 
 export interface CartItem {
   purchasable_id: number;
@@ -20,6 +35,8 @@ export interface CartItem {
   discounted_price?: number;
   discount_percentage?: number;
   total_price?: number;
+  // Enhanced option details for display
+  selectedOptions?: ServiceOption[];
 }
 
 interface CartStore {
@@ -69,6 +86,9 @@ interface CartStore {
   // State management
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
+
+  // Helper method to calculate local totals
+  calculateLocalTotals: () => void;
 }
 
 export const useCartStore = create<CartStore>()((set, get) => ({
@@ -91,6 +111,25 @@ export const useCartStore = create<CartStore>()((set, get) => ({
   },
   cartCount: 0,
   minPaymentPrice: 0,
+
+  calculateLocalTotals: () => {
+    const items = get().items;
+    const subtotal = items.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0
+    );
+    const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
+
+    set({
+      subtotal,
+      totalItems,
+      // Only update totalPrice locally if we don't have server data yet
+      totalPrice:
+        get().shippingPrice === 0 && get().servicePrice === 0
+          ? subtotal
+          : get().totalPrice,
+    });
+  },
 
   addItem: (item) => {
     const items = get().items;
@@ -120,18 +159,15 @@ export const useCartStore = create<CartStore>()((set, get) => ({
         price: item.price, // Use the latest price
       };
 
-      set({
-        items: updatedItems,
-        totalItems: updatedItems.reduce((sum, item) => sum + item.quantity, 0),
-      });
+      set({ items: updatedItems });
     } else {
       // Add new item
       const newItems = [...items, item];
-      set({
-        items: newItems,
-        totalItems: newItems.reduce((sum, item) => sum + item.quantity, 0),
-      });
+      set({ items: newItems });
     }
+
+    // Recalculate totals after adding item
+    get().calculateLocalTotals();
   },
 
   removeItem: (purchasableId, purchasableType, optionIds) => {
@@ -165,10 +201,7 @@ export const useCartStore = create<CartStore>()((set, get) => ({
         })
         .filter(Boolean) as CartItem[];
 
-      set({
-        items: updatedItems,
-        totalItems: updatedItems.reduce((sum, item) => sum + item.quantity, 0),
-      });
+      set({ items: updatedItems });
     } else {
       // Remove entire item
       const updatedItems = items.filter(
@@ -178,11 +211,11 @@ export const useCartStore = create<CartStore>()((set, get) => ({
             item.purchasable_type === purchasableType
           )
       );
-      set({
-        items: updatedItems,
-        totalItems: updatedItems.reduce((sum, item) => sum + item.quantity, 0),
-      });
+      set({ items: updatedItems });
     }
+
+    // Recalculate totals after removing item
+    get().calculateLocalTotals();
   },
 
   updateQuantity: (purchasableId, purchasableType, optionIds, quantity) => {
@@ -198,10 +231,10 @@ export const useCartStore = create<CartStore>()((set, get) => ({
         ? { ...item, quantity }
         : item
     );
-    set({
-      items: updatedItems,
-      totalItems: updatedItems.reduce((sum, item) => sum + item.quantity, 0),
-    });
+    set({ items: updatedItems });
+
+    // Recalculate totals after updating quantity
+    get().calculateLocalTotals();
   },
 
   clearCart: () => {
@@ -211,23 +244,18 @@ export const useCartStore = create<CartStore>()((set, get) => ({
       subtotal: 0,
       discountAmount: 0,
       totalPrice: 0,
+      shippingPrice: 0,
+      servicePrice: 0,
+      servicePercentage: 0,
+      minOrderPercentage: 0,
+      isValidCoupon: { value: false, reasons: "" },
+      cartCount: 0,
+      minPaymentPrice: 0,
     });
   },
+
   syncWithServer: async (carId: number, userId: number) => {
     const items = get().items;
-    if (items.length === 0) {
-      set({
-        totalItems: 0,
-        subtotal: 0,
-        discountAmount: 0,
-        totalPrice: 0,
-        shippingPrice: 0,
-        servicePrice: 0,
-        cartCount: 0,
-        minPaymentPrice: 0,
-      });
-      return;
-    }
 
     set({ isLoading: true, error: null });
     try {
@@ -247,6 +275,29 @@ export const useCartStore = create<CartStore>()((set, get) => ({
       const response = await submitCartForPricing(cartRequest);
 
       if (response.success) {
+        if (items.length === 0) {
+          // Handle empty cart case
+          console.log("Handling empty cart, server response:", response.cart);
+          set({
+            items: [],
+            totalItems: 0,
+            subtotal: response.cart.subtotal_price || 0,
+            discountAmount: response.cart.discount_price || 0,
+            totalPrice: response.cart.total_price || 0,
+            shippingPrice: response.cart.shipping_price || 0,
+            servicePrice: response.cart.service_price || 0,
+            servicePercentage: response.cart.service_percentage || 0,
+            minOrderPercentage: response.cart.min_order_percentage || 0,
+            isValidCoupon: response.cart.is_valid_coupon || {
+              value: false,
+              reasons: "",
+            },
+            cartCount: response.cart.count || 0,
+            minPaymentPrice: response.cart.min_payment_price || 0,
+          });
+          return;
+        }
+
         // Combine services and products from the response
         const allServerItems = [
           ...response.cart.services.map((item) => ({
@@ -267,45 +318,99 @@ export const useCartStore = create<CartStore>()((set, get) => ({
           })),
         ];
 
-        // Update items with server pricing data
-        const updatedItems = allServerItems.map((serverItem) => {
-          // Find matching local item for additional data like options
-          const localItem = items.find(
-            (local) =>
-              local.purchasable_id === serverItem.purchasable_id &&
-              local.purchasable_type === serverItem.purchasable_type
-          );
+        // Update items with server pricing data and fetch service options
+        const updatedItems = await Promise.all(
+          allServerItems.map(async (serverItem) => {
+            // Find matching local item for additional data like options
+            const localItem = items.find(
+              (local) =>
+                local.purchasable_id === serverItem.purchasable_id &&
+                local.purchasable_type === serverItem.purchasable_type
+            );
 
-          return {
-            purchasable_id: serverItem.purchasable_id,
-            purchasable_type: serverItem.purchasable_type,
-            quantity: serverItem.quantity,
-            option_ids: serverItem.option_ids,
-            name: serverItem.name,
-            price: serverItem.price,
-            image: serverItem.image,
-            options: localItem?.options || [],
-            // Server response data
-            id: `${serverItem.purchasable_id}-${serverItem.purchasable_type}`,
-            total_price: serverItem.price * serverItem.quantity,
-            status: serverItem.status,
-          } as CartItem;
-        });
+            let selectedOptions: ServiceOption[] = [];
 
-        set({
+            // Fetch service options if this is a service item with option_ids
+            if (
+              serverItem.purchasable_type === "service" &&
+              serverItem.option_ids &&
+              serverItem.option_ids.length > 0
+            ) {
+              try {
+                const allOptions = await getServiceOptions(
+                  serverItem.purchasable_id
+                );
+                selectedOptions = allOptions.filter((option) =>
+                  serverItem.option_ids!.includes(option.id)
+                );
+              } catch (error) {
+                console.error("Failed to fetch service options:", error);
+              }
+            }
+
+            return {
+              purchasable_id: serverItem.purchasable_id,
+              purchasable_type: serverItem.purchasable_type,
+              quantity: serverItem.quantity,
+              option_ids: serverItem.option_ids,
+              name: serverItem.name,
+              price: serverItem.price,
+              image: serverItem.image,
+              options: localItem?.options || [],
+              selectedOptions,
+              // Server response data
+              id: `${serverItem.purchasable_id}-${serverItem.purchasable_type}`,
+              total_price: serverItem.price * serverItem.quantity,
+              status: serverItem.status,
+            } as CartItem;
+          })
+        );
+
+        // IMPORTANT: Set all the cart data from server response
+        const newState = {
           items: updatedItems,
-          totalItems: response.cart.quantity,
+          totalItems:
+            response.cart.quantity ||
+            updatedItems.reduce((sum, item) => sum + item.quantity, 0),
+          subtotal: response.cart.subtotal_price || 0,
+          discountAmount: response.cart.discount_price || 0,
+          totalPrice: response.cart.total_price || 0, // This should be 415.8 from your API
+          shippingPrice: response.cart.shipping_price || 0,
+          servicePrice: response.cart.service_price || 0,
+          servicePercentage: response.cart.service_percentage || 0,
+          minOrderPercentage: response.cart.min_order_percentage || 0,
+          isValidCoupon: response.cart.is_valid_coupon || {
+            value: false,
+            reasons: "",
+          },
+          cartCount: response.cart.count || 0,
+          minPaymentPrice: response.cart.min_payment_price || 0,
+        };
+
+        set(newState);
+
+        // Enhanced debug log
+        console.log("Cart sync completed:", {
+          apiTotalPrice: response.cart.total_price,
+          setTotalPrice: newState.totalPrice,
           subtotal: response.cart.subtotal_price,
-          discountAmount: response.cart.discount_price,
-          totalPrice: response.cart.total_price,
-          shippingPrice: response.cart.shipping_price,
           servicePrice: response.cart.service_price,
-          servicePercentage: response.cart.service_percentage,
-          minOrderPercentage: response.cart.min_order_percentage,
-          isValidCoupon: response.cart.is_valid_coupon,
-          cartCount: response.cart.count,
-          minPaymentPrice: response.cart.min_payment_price,
+          shippingPrice: response.cart.shipping_price,
+          discountAmount: response.cart.discount_price,
+          items: updatedItems.length,
+          fullResponse: response.cart,
         });
+
+        // Verify the state was actually set
+        setTimeout(() => {
+          const currentState = get();
+          console.log("State verification after sync:", {
+            totalPrice: currentState.totalPrice,
+            subtotal: currentState.subtotal,
+            servicePrice: currentState.servicePrice,
+            items: currentState.items.length,
+          });
+        }, 100);
       } else {
         set({ error: response.message });
       }
@@ -340,20 +445,7 @@ export const useCartStore = create<CartStore>()((set, get) => ({
 
       if (response.success) {
         // Clear cart after successful order submission
-        set({
-          items: [],
-          totalItems: 0,
-          subtotal: 0,
-          discountAmount: 0,
-          totalPrice: 0,
-          shippingPrice: 0,
-          servicePrice: 0,
-          servicePercentage: 0,
-          minOrderPercentage: 0,
-          isValidCoupon: { value: false, reasons: "" },
-          cartCount: 0,
-          minPaymentPrice: 0,
-        });
+        get().clearCart();
       } else {
         set({ error: response.message });
         throw new Error(response.message);
