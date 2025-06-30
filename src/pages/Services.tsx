@@ -87,6 +87,13 @@ const Services = () => {
         return "selected";
     }
   };
+
+  // Helper function to check if price is valid (not null and greater than 0)
+  const isValidPrice = (option: ServiceOption): boolean => {
+    const price = getOptionPrice(option);
+    return price !== null && price > 0;
+  };
+
   const addToCart = async (option: ServiceOption, service: Service) => {
     if (!selectedCar) {
       addToast({
@@ -114,11 +121,11 @@ const Services = () => {
 
     const dynamicPrice = getOptionPrice(option);
 
-    if (dynamicPrice === null) {
-      // Handle case where price is not available
-      console.warn("Price not available for option:", option.name.en);
+    // Check if price is available and greater than 0
+    if (dynamicPrice === null || dynamicPrice <= 0) {
       addToast({
-        message: "Price not available for this service option",
+        message:
+          "Price is not available for this service option with your selected vehicle",
         type: "error",
       });
       return;
@@ -440,14 +447,27 @@ const Services = () => {
                               {/* Price Display */}
                               {(() => {
                                 const dynamicPrice = getOptionPrice(option);
+                                if (
+                                  dynamicPrice === null ||
+                                  dynamicPrice <= 0
+                                ) {
+                                  return (
+                                    <div className="mb-3">
+                                      <p className="text-gray-500 font-bold text-sm">
+                                        Price Not Available
+                                      </p>
+                                    </div>
+                                  );
+                                }
                                 return (
                                   <div className="mb-3">
                                     <p className="text-green-600 font-bold text-sm">
-                                      {dynamicPrice !== null
-                                        ? `$${dynamicPrice.toLocaleString()}`
-                                        : "Price on request"}
-                                      {selectedCar && dynamicPrice !== null && (
-                                        <span className="text-xs text-gray-500 block">
+                                      {dynamicPrice.toLocaleString()}
+                                      <sub className="text-sm font-normal ml-1">
+                                        AED
+                                      </sub>
+                                      {selectedCar && (
+                                        <span className="text-xs text-gray-500 block font-normal">
                                           For your{" "}
                                           {getCarSizeName(
                                             selectedCar.car_group_id
@@ -461,21 +481,33 @@ const Services = () => {
                               })()}{" "}
                               {/* Add to Cart Button */}{" "}
                               <motion.button
-                                whileHover={{ scale: selectedCar ? 1.02 : 1 }}
-                                whileTap={{ scale: selectedCar ? 0.98 : 1 }}
+                                whileHover={{
+                                  scale:
+                                    selectedCar && isValidPrice(option)
+                                      ? 1.02
+                                      : 1,
+                                }}
+                                whileTap={{
+                                  scale:
+                                    selectedCar && isValidPrice(option)
+                                      ? 0.98
+                                      : 1,
+                                }}
                                 onClick={() => addToCart(option, service)}
-                                disabled={!selectedCar}
+                                disabled={!selectedCar || !isValidPrice(option)}
                                 className={`w-full py-2 px-4 rounded-lg text-xs font-semibold transition-colors duration-200 flex items-center justify-center space-x-2 ${
-                                  selectedCar
+                                  selectedCar && isValidPrice(option)
                                     ? "bg-green-600 hover:bg-green-700 text-white cursor-pointer"
                                     : "bg-gray-300 text-gray-500 cursor-not-allowed"
                                 }`}
                               >
                                 <ShoppingCart size={14} />
                                 <span>
-                                  {selectedCar
-                                    ? "Add to Cart"
-                                    : "Select Vehicle First"}
+                                  {!selectedCar
+                                    ? "Select Vehicle First"
+                                    : !isValidPrice(option)
+                                    ? "Price Not Available"
+                                    : "Add to Cart"}
                                 </span>
                               </motion.button>
                             </div>

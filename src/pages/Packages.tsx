@@ -353,7 +353,7 @@ const Packages = () => {
                       ? "Select Vehicle First"
                       : !isValidPrice(pkg)
                       ? "Price Not Available"
-                      : "Select Package"}
+                      : "Add to Cart"}
                   </motion.button>
                 </div>
               </div>
