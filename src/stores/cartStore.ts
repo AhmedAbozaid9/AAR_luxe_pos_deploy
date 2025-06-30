@@ -97,15 +97,29 @@ export const useCartStore = create<CartStore>()((set, get) => ({
     const existingItemIndex = items.findIndex(
       (existingItem) =>
         existingItem.purchasable_id === item.purchasable_id &&
-        existingItem.purchasable_type === item.purchasable_type &&
-        JSON.stringify(existingItem.option_ids?.sort()) ===
-          JSON.stringify(item.option_ids?.sort())
+        existingItem.purchasable_type === item.purchasable_type
     );
 
     if (existingItemIndex !== -1) {
-      // Update quantity if item already exists
+      // Update existing item: merge option_ids and add quantity
       const updatedItems = [...items];
-      updatedItems[existingItemIndex].quantity += item.quantity;
+      const existingItem = updatedItems[existingItemIndex];
+
+      // Merge option_ids arrays and remove duplicates
+      const existingOptionIds = existingItem.option_ids || [];
+      const newOptionIds = item.option_ids || [];
+      const mergedOptionIds = [
+        ...new Set([...existingOptionIds, ...newOptionIds]),
+      ];
+
+      updatedItems[existingItemIndex] = {
+        ...existingItem,
+        quantity: existingItem.quantity + item.quantity,
+        option_ids: mergedOptionIds.length > 0 ? mergedOptionIds : null,
+        // Update price to be the combined price if needed
+        price: item.price, // Use the latest price
+      };
+
       set({
         items: updatedItems,
         totalItems: updatedItems.reduce((sum, item) => sum + item.quantity, 0),
@@ -122,19 +136,53 @@ export const useCartStore = create<CartStore>()((set, get) => ({
 
   removeItem: (purchasableId, purchasableType, optionIds) => {
     const items = get().items;
-    const updatedItems = items.filter(
-      (item) =>
-        !(
-          item.purchasable_id === purchasableId &&
-          item.purchasable_type === purchasableType &&
-          JSON.stringify(item.option_ids?.sort()) ===
-            JSON.stringify(optionIds?.sort())
-        )
-    );
-    set({
-      items: updatedItems,
-      totalItems: updatedItems.reduce((sum, item) => sum + item.quantity, 0),
-    });
+
+    if (optionIds && optionIds.length > 0) {
+      // Remove specific options from the item
+      const updatedItems = items
+        .map((item) => {
+          if (
+            item.purchasable_id === purchasableId &&
+            item.purchasable_type === purchasableType
+          ) {
+            const currentOptionIds = item.option_ids || [];
+            const filteredOptionIds = currentOptionIds.filter(
+              (id) => !optionIds.includes(id)
+            );
+
+            // If no options left, mark for removal
+            if (filteredOptionIds.length === 0) {
+              return null;
+            }
+
+            return {
+              ...item,
+              option_ids:
+                filteredOptionIds.length > 0 ? filteredOptionIds : null,
+            };
+          }
+          return item;
+        })
+        .filter(Boolean) as CartItem[];
+
+      set({
+        items: updatedItems,
+        totalItems: updatedItems.reduce((sum, item) => sum + item.quantity, 0),
+      });
+    } else {
+      // Remove entire item
+      const updatedItems = items.filter(
+        (item) =>
+          !(
+            item.purchasable_id === purchasableId &&
+            item.purchasable_type === purchasableType
+          )
+      );
+      set({
+        items: updatedItems,
+        totalItems: updatedItems.reduce((sum, item) => sum + item.quantity, 0),
+      });
+    }
   },
 
   updateQuantity: (purchasableId, purchasableType, optionIds, quantity) => {
@@ -146,9 +194,7 @@ export const useCartStore = create<CartStore>()((set, get) => ({
     const items = get().items;
     const updatedItems = items.map((item) =>
       item.purchasable_id === purchasableId &&
-      item.purchasable_type === purchasableType &&
-      JSON.stringify(item.option_ids?.sort()) ===
-        JSON.stringify(optionIds?.sort())
+      item.purchasable_type === purchasableType
         ? { ...item, quantity }
         : item
     );
@@ -209,6 +255,7 @@ export const useCartStore = create<CartStore>()((set, get) => ({
             name: item.cart.purchasable.name.en,
             price: item.payload.price,
             status: item.payload.status,
+            image: item.cart.purchasable.icon?.url,
           })),
           ...response.cart.products.map((item) => ({
             ...item.cart,
@@ -216,26 +263,33 @@ export const useCartStore = create<CartStore>()((set, get) => ({
             name: item.cart.purchasable.name.en,
             price: item.payload.price,
             status: item.payload.status,
+            image: item.cart.purchasable.icon?.url,
           })),
         ];
 
         // Update items with server pricing data
-        const updatedItems = items.map((localItem) => {
-          const serverItem = allServerItems.find(
-            (sItem) =>
-              sItem.purchasable_id === localItem.purchasable_id &&
-              sItem.purchasable_type === localItem.purchasable_type
+        const updatedItems = allServerItems.map((serverItem) => {
+          // Find matching local item for additional data like options
+          const localItem = items.find(
+            (local) =>
+              local.purchasable_id === serverItem.purchasable_id &&
+              local.purchasable_type === serverItem.purchasable_type
           );
 
-          if (serverItem) {
-            return {
-              ...localItem,
-              id: `${serverItem.purchasable_id}-${serverItem.purchasable_type}`,
-              price: serverItem.price,
-              total_price: serverItem.price * localItem.quantity,
-            };
-          }
-          return localItem;
+          return {
+            purchasable_id: serverItem.purchasable_id,
+            purchasable_type: serverItem.purchasable_type,
+            quantity: serverItem.quantity,
+            option_ids: serverItem.option_ids,
+            name: serverItem.name,
+            price: serverItem.price,
+            image: serverItem.image,
+            options: localItem?.options || [],
+            // Server response data
+            id: `${serverItem.purchasable_id}-${serverItem.purchasable_type}`,
+            total_price: serverItem.price * serverItem.quantity,
+            status: serverItem.status,
+          } as CartItem;
         });
 
         set({

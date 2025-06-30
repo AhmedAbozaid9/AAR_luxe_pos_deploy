@@ -870,17 +870,6 @@ const Sidebar = () => {
                       `Checkout • ${formatPrice(totalPrice)}`
                     )}
                   </motion.button>
-                  {/* Clear Cart Button */}
-                  {items.length > 0 && (
-                    <motion.button
-                      whileHover={{ scale: 1.01 }}
-                      whileTap={{ scale: 0.99 }}
-                      onClick={handleClearCart}
-                      className="w-full py-2 rounded-lg font-medium text-xs bg-red-500/10 hover:bg-red-500/20 text-red-300 hover:text-red-200 border border-red-500/20 hover:border-red-500/30 transition-all duration-200"
-                    >
-                      Clear All Items
-                    </motion.button>
-                  )}
                 </div>
               </motion.div>
             )}

@@ -42,6 +42,7 @@ export interface CartResponse {
         purchasable_id: number;
         purchasable_type: "service";
         quantity: number;
+        option_ids?: number[] | null;
         purchasable: {
           id: number;
           business_id: number;
@@ -56,6 +57,9 @@ export interface CartResponse {
           updated_at: string;
           description: string;
           is_favourite: boolean | null;
+          icon?: {
+            url: string;
+          };
         };
       };
       payload: {
@@ -69,6 +73,7 @@ export interface CartResponse {
         purchasable_id: number;
         purchasable_type: "product";
         quantity: number;
+        option_ids?: number[] | null;
         purchasable: {
           id: number;
           business_id: number;
@@ -83,6 +88,9 @@ export interface CartResponse {
           updated_at: string;
           description: string;
           is_favourite: boolean | null;
+          icon?: {
+            url: string;
+          };
         };
       };
       payload: {
