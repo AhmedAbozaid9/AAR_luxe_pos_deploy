@@ -47,21 +47,33 @@ const Packages = () => {
   const getDynamicPrice = (
     pkg: Package
   ): { price: number | null; showCarInfo: boolean } => {
+    console.log("getDynamicPrice called for package:", pkg.name.en);
+    console.log("Package prices:", pkg.prices);
+    console.log("Selected car:", selectedCar);
+
     if (!pkg.prices || pkg.prices.length === 0) {
+      console.log("No prices available for package");
       return { price: null, showCarInfo: false };
     }
 
     // If a car is selected, get price for that car group
     if (selectedCar?.car_group_id) {
+      console.log(
+        "Looking for price for car group ID:",
+        selectedCar.car_group_id
+      );
       const dynamicPrice = getPriceForCarGroup(
         pkg.prices,
         selectedCar.car_group_id
       );
+      console.log("Dynamic price found:", dynamicPrice);
       return { price: dynamicPrice, showCarInfo: true };
     }
 
     // Otherwise, show minimum price as fallback
+    console.log("No car selected, using minimum price");
     const minPrice = getMinPrice(pkg.prices);
+    console.log("Minimum price:", minPrice);
     return { price: minPrice, showCarInfo: false };
   };
   // Get car size name based on car group ID
@@ -76,6 +88,14 @@ const Packages = () => {
       default:
         return "selected";
     }
+  };
+
+  // Helper function to check if price is valid (not null and greater than 0)
+  const isValidPrice = (pkg: Package): boolean => {
+    const { price } = getDynamicPrice(pkg);
+    console.log(pkg);
+    console.log(price, "isValidPrice called for package:", pkg.name.en);
+    return price !== null && price > 0;
   };
   // Function to add package to cart
   const addToCart = async (pkg: Package) => {
@@ -102,7 +122,18 @@ const Packages = () => {
       });
       return;
     }
+
     const { price } = getDynamicPrice(pkg);
+
+    // Check if price is available and greater than 0
+    if (price === null || price <= 0) {
+      addToast({
+        message:
+          "Price is not available for this package with your selected vehicle",
+        type: "error",
+      });
+      return;
+    }
 
     try {
       // Add item to local cart
@@ -111,7 +142,7 @@ const Packages = () => {
         purchasable_type: "package",
         quantity: 1,
         name: pkg.name.en,
-        price: price ?? 0,
+        price: price,
         image: pkg.image?.url,
       }); // Sync with server to get updated pricing
       await syncWithServer(selectedCar.id, selectedCustomer.id);
@@ -284,8 +315,8 @@ const Packages = () => {
                   <div className="text-2xl font-bold text-green-600">
                     {(() => {
                       const { price, showCarInfo } = getDynamicPrice(pkg);
-                      if (price === null) {
-                        return "Price on request";
+                      if (price === null || price <= 0) {
+                        return "Price Not Available";
                       }
                       return (
                         <div>
@@ -304,17 +335,25 @@ const Packages = () => {
                     })()}
                   </div>{" "}
                   <motion.button
-                    whileHover={{ scale: selectedCar ? 1.05 : 1 }}
-                    whileTap={{ scale: selectedCar ? 0.95 : 1 }}
+                    whileHover={{
+                      scale: selectedCar && isValidPrice(pkg) ? 1.05 : 1,
+                    }}
+                    whileTap={{
+                      scale: selectedCar && isValidPrice(pkg) ? 0.95 : 1,
+                    }}
                     onClick={() => addToCart(pkg)}
-                    disabled={!selectedCar}
+                    disabled={!selectedCar || !isValidPrice(pkg)}
                     className={`px-4 py-2 rounded-lg transition-colors duration-200 text-sm font-medium ${
-                      selectedCar
+                      selectedCar && isValidPrice(pkg)
                         ? "bg-green-500 hover:bg-green-600 text-white cursor-pointer"
                         : "bg-gray-300 text-gray-500 cursor-not-allowed"
                     }`}
                   >
-                    {selectedCar ? "Select Package" : "Select Vehicle First"}
+                    {!selectedCar
+                      ? "Select Vehicle First"
+                      : !isValidPrice(pkg)
+                      ? "Price Not Available"
+                      : "Select Package"}
                   </motion.button>
                 </div>
               </div>

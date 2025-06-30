@@ -1,11 +1,13 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import type { PackagePrice } from "../api/getPackages";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
 // Dynamic pricing utilities
+// Interface for basic price item (to maintain backward compatibility)
 export interface PriceItem {
   group_type_car_id: number;
   price: number;
@@ -13,33 +15,78 @@ export interface PriceItem {
 
 /**
  * Get the price for a specific car group from an array of prices
- * @param prices Array of price objects with group_type_car_id and price
+ * @param prices Array of PackagePrice objects
  * @param carGroupId The car group ID to find the price for
  * @returns The price for the specified car group, or null if not found
  */
 export function getPriceForCarGroup(
-  prices: PriceItem[],
+  prices: PackagePrice[],
   carGroupId: number | null
 ): number | null {
   if (!carGroupId || !prices || prices.length === 0) {
+    console.log("getPriceForCarGroup: Invalid input", {
+      carGroupId,
+      pricesLength: prices?.length,
+    });
     return null;
   }
 
-  const priceItem = prices.find((p) => p.group_type_car_id === carGroupId);
-  return priceItem ? priceItem.price : null;
+  console.log("getPriceForCarGroup: Looking for car group ID:", carGroupId);
+  console.log(
+    "getPriceForCarGroup: Available prices:",
+    prices.map((p) => ({
+      id: p.id,
+      group_type_car_id: p.group_type_car_id,
+      price: p.price,
+      type: typeof p.group_type_car_id,
+      priceType: typeof p.price,
+    }))
+  );
+
+  // Convert carGroupId to number to ensure proper comparison
+  const carGroupIdNum = Number(carGroupId);
+
+  const priceItem = prices.find((p) => {
+    const groupTypeCarIdNum = Number(p.group_type_car_id);
+    console.log(`Comparing ${groupTypeCarIdNum} === ${carGroupIdNum}`);
+    return groupTypeCarIdNum === carGroupIdNum;
+  });
+
+  console.log("getPriceForCarGroup: Found price item:", priceItem);
+
+  // Return null if price is 0 or if no price item found
+  return priceItem && priceItem.price > 0 ? priceItem.price : null;
 }
 
 /**
  * Get the minimum price from an array of prices (fallback when no car is selected)
- * @param prices Array of price objects
+ * @param prices Array of PackagePrice objects
  * @returns The minimum price, or null if no prices available
  */
-export function getMinPrice(prices: PriceItem[]): number | null {
+export function getMinPrice(prices: PackagePrice[]): number | null {
   if (!prices || prices.length === 0) {
+    console.log("getMinPrice: No prices available");
     return null;
   }
 
-  return Math.min(...prices.map((p) => p.price));
+  console.log(
+    "getMinPrice: Calculating min from prices:",
+    prices.map((p) => p.price)
+  );
+
+  // Filter out prices that are 0 or negative
+  const validPrices = prices.filter((p) => p.price > 0).map((p) => p.price);
+
+  if (validPrices.length === 0) {
+    console.log(
+      "getMinPrice: No valid prices available (all are 0 or negative)"
+    );
+    return null;
+  }
+
+  const minPrice = Math.min(...validPrices);
+  console.log("getMinPrice: Minimum price found:", minPrice);
+  return minPrice;
 }
 
 /**
